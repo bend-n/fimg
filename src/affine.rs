@@ -27,7 +27,7 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
     }
 
     /// Flip a image horizontally.
-    fn flip_h(&mut self) {
+    pub fn flip_h(&mut self) {
         for y in 0..self.height() {
             for x in 0..self.width() / 2 {
                 let x2 = self.width() - x - 1;

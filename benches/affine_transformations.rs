@@ -12,9 +12,10 @@ macro_rules! bench {
                 64.try_into().unwrap(),
                 include_bytes!("4_180x180.imgbuf").to_vec(),
             );
-            b.iter(|| {
+            #[allow(unused_unsafe)]
+            b.iter(|| unsafe {
                 for _ in 0..256 {
-                    img.flip_h();
+                    img.$fn();
                 }
             });
         }
