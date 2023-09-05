@@ -20,17 +20,7 @@ use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
 mod overlay;
-pub use affine::{Flips, Rotations};
 pub use overlay::{Overlay, OverlayAt};
-
-pub trait RepeatNew {
-    type Output;
-    /// Repeat self till it fills a new image of size x, y
-    /// # Safety
-    ///
-    /// UB if self's width is not a multiple of x, or self's height is not a multiple of y
-    unsafe fn repeated(&self, x: u32, y: u32) -> Self::Output;
-}
 
 macro_rules! assert_unchecked {
     ($cond:expr) => {{
@@ -46,9 +36,12 @@ macro_rules! assert_unchecked {
 }
 use assert_unchecked;
 
-impl RepeatNew for Image<&[u8], 3> {
-    type Output = Image<Vec<u8>, 3>;
-    unsafe fn repeated(&self, x: u32, y: u32) -> Self::Output {
+impl Image<&[u8], 3> {
+    /// Repeat self till it fills a new image of size x, y
+    /// # Safety
+    ///
+    /// UB if self's width is not a multiple of x, or self's height is not a multiple of y
+    pub unsafe fn repeated(&self, x: u32, y: u32) -> Image<Vec<u8>, 3> {
         let mut img = Image::alloc(x, y); // could probably optimize this a ton but eh
         for x in 0..(x / self.width()) {
             for y in 0..(y / self.height()) {
@@ -68,10 +61,14 @@ unsafe fn really_unsafe_index(x: u32, y: u32, w: u32) -> usize {
     unsafe { tmp.unchecked_add(x as usize) }
 }
 
+/// A image with a variable number of channels, and a nonzero size.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Image<T, const CHANNELS: usize> {
+    /// column order 2d slice/vec
     pub buffer: T,
+    /// image horizontal size
     pub width: NonZeroU32,
+    /// image vertical size
     pub height: NonZeroU32,
 }
 
@@ -87,16 +84,19 @@ impl<const CHANNELS: usize> Default for Image<&'static [u8], CHANNELS> {
 
 impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     #[inline]
+    /// get the height as a [`u32`]
     pub fn height(&self) -> u32 {
         self.height.into()
     }
 
     #[inline]
+    /// get the width as a [`u32`]
     pub fn width(&self) -> u32 {
         self.width.into()
     }
 
     #[inline]
+    /// create a new image
     pub const fn new(width: NonZeroU32, height: NonZeroU32, buffer: T) -> Self {
         Image {
             buffer,
@@ -109,6 +109,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     #[inline]
     #[must_use]
+    /// Copy this ref image
     pub const fn copy(&self) -> Self {
         Self {
             width: self.width,
@@ -192,36 +193,30 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
     }
 }
 
-pub trait FromRef<const CHANNELS: usize> {
-    /// Reference the buffer
-    fn as_ref(&self) -> Image<&[u8], CHANNELS>;
-}
-
-pub trait FromRefMut<const CHANNELS: usize> {
-    /// Reference the buffer, mutably
-    fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS>;
-}
-
-impl<const CHANNELS: usize> FromRef<CHANNELS> for Image<&mut [u8], CHANNELS> {
-    fn as_ref(&self) -> Image<&[u8], CHANNELS> {
+impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+    /// Downcast the mutable reference
+    pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
         Image::new(self.width, self.height, self.buffer)
     }
 }
 
-impl<const CHANNELS: usize> FromRefMut<CHANNELS> for Image<&mut [u8], CHANNELS> {
-    fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
+impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+    /// Copy this ref image
+    pub fn copy(&mut self) -> Image<&mut [u8], CHANNELS> {
         Image::new(self.width, self.height, self.buffer)
     }
 }
 
-impl<const CHANNELS: usize> FromRef<CHANNELS> for Image<Vec<u8>, CHANNELS> {
-    fn as_ref(&self) -> Image<&[u8], CHANNELS> {
+impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
+    /// Create a reference to this owned image
+    pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
         Image::new(self.width, self.height, &self.buffer)
     }
 }
 
-impl<const CHANNELS: usize> FromRefMut<CHANNELS> for Image<Vec<u8>, CHANNELS> {
-    fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
+impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
+    /// Create a mutable reference to this owned image
+    pub fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
         Image::new(self.width, self.height, &mut self.buffer)
     }
 }

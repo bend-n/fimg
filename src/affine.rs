@@ -1,39 +1,19 @@
-use crate::{FromRefMut, Image};
+use crate::Image;
 
-pub trait Rotations {
-    /// Rotate a image 180 degrees clockwise.
-    fn rot_180(&mut self);
-    /// Rotate a image 90 degrees clockwise.
-    /// # Safety
-    ///
-    /// UB if the image is not square
-    unsafe fn rot_90(&mut self);
-    /// Rotate a image 270 degrees clockwise, or 90 degrees anti clockwise.
-    /// # Safety
-    ///
-    /// UB if the image is not square
-    unsafe fn rot_270(&mut self);
-}
-
-pub trait Flips {
-    /// Flip a image vertically.
-    fn flip_v(&mut self);
-
+impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// Flip a image horizontally.
-    fn flip_h(&mut self);
-}
-
-impl<const CHANNELS: usize> Flips for Image<Vec<u8>, CHANNELS> {
-    fn flip_h(&mut self) {
+    pub fn flip_h(&mut self) {
         self.as_mut().flip_h();
     }
-    fn flip_v(&mut self) {
+    /// Flip a image vertically.
+    pub fn flip_v(&mut self) {
         self.as_mut().flip_v();
     }
 }
 
-impl<const CHANNELS: usize> Flips for Image<&mut [u8], CHANNELS> {
-    fn flip_v(&mut self) {
+impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+    /// Flip a image vertically.
+    pub fn flip_v(&mut self) {
         for y in 0..self.height() / 2 {
             for x in 0..self.width() {
                 let y2 = self.height() - y - 1;
@@ -46,6 +26,7 @@ impl<const CHANNELS: usize> Flips for Image<&mut [u8], CHANNELS> {
         }
     }
 
+    /// Flip a image horizontally.
     fn flip_h(&mut self) {
         for y in 0..self.height() {
             for x in 0..self.width() / 2 {
@@ -59,22 +40,32 @@ impl<const CHANNELS: usize> Flips for Image<&mut [u8], CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize> Rotations for Image<Vec<u8>, CHANNELS> {
-    fn rot_180(&mut self) {
+impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
+    /// Rotate a image 180 degrees clockwise.
+    pub fn rot_180(&mut self) {
         self.as_mut().rot_180();
     }
 
-    unsafe fn rot_90(&mut self) {
+    /// Rotate a image 90 degrees clockwise.
+    /// # Safety
+    ///
+    /// UB if the image is not square
+    pub unsafe fn rot_90(&mut self) {
         unsafe { self.as_mut().rot_90() }
     }
 
-    unsafe fn rot_270(&mut self) {
+    /// Rotate a image 270 degrees clockwise, or 90 degrees anti clockwise.
+    /// # Safety
+    ///
+    /// UB if the image is not square
+    pub unsafe fn rot_270(&mut self) {
         unsafe { self.as_mut().rot_270() }
     }
 }
 
-impl<const CHANNELS: usize> Rotations for Image<&mut [u8], CHANNELS> {
-    fn rot_180(&mut self) {
+impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+    /// Rotate a image 180 degrees clockwise.
+    pub fn rot_180(&mut self) {
         for y in 0..self.height() / 2 {
             for x in 0..self.width() {
                 let p = unsafe { self.pixel(x, y) };
@@ -99,17 +90,25 @@ impl<const CHANNELS: usize> Rotations for Image<&mut [u8], CHANNELS> {
         }
     }
 
+    /// Rotate a image 90 degrees clockwise.
+    /// # Safety
+    ///
+    /// UB if the image is not square
     #[inline]
-    unsafe fn rot_90(&mut self) {
+    pub unsafe fn rot_90(&mut self) {
         // This is done by first flipping
         self.flip_v();
-        // Then transposing the image, to save allocations.
+        // Then transposing the image, as to not allocate.
         // SAFETY: caller ensures square
         unsafe { transpose(self) };
     }
 
+    /// Rotate a image 270 degrees clockwise, or 90 degrees anti clockwise.
+    /// # Safety
+    ///
+    /// UB if the image is not square
     #[inline]
-    unsafe fn rot_270(&mut self) {
+    pub unsafe fn rot_270(&mut self) {
         self.flip_h();
         // SAFETY: caller ensures squareness
         unsafe { transpose(self) };

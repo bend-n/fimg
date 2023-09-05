@@ -3,6 +3,7 @@ use std::simd::SimdInt;
 use std::simd::SimdPartialOrd;
 use std::simd::{simd_swizzle, Simd};
 
+/// Trait for layering a image ontop of another, with a offset to the second image.
 pub trait OverlayAt<W> {
     /// Overlay with => self at coordinates x, y, without blending
     /// # Safety
@@ -10,7 +11,8 @@ pub trait OverlayAt<W> {
     /// UB if x, y is out of bounds
     unsafe fn overlay_at(&mut self, with: &W, x: u32, y: u32) -> &mut Self;
 }
-
+/// Trait for layering images ontop of each other.
+/// Think `magick a b -layers flatten a`
 pub trait Overlay<W> {
     /// Overlay with => self (does not blend)
     /// # Safety
