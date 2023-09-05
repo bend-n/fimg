@@ -12,6 +12,13 @@ repository = "https://github.com/bend-n/fimg"
 [dependencies]
 png = { version = "0.17", features = ["unstable"], optional = true }
 
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "overlays"
+harness = false
+
 [features]
 save = ["png"]
 default = ["save"]
