@@ -243,6 +243,15 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
 }
 macro_rules! save {
     ($channels:literal == $clr:ident ($clrhuman:literal)) => {
+        impl Image<Vec<u8>, $channels> {
+            #[doc = "Save this "]
+            #[doc = $clrhuman]
+            #[doc = " image."]
+            pub fn save(&self, f: impl AsRef<std::path::Path>) {
+                self.as_ref().save(f)
+            }
+        }
+
         impl Image<&[u8], $channels> {
             #[cfg(feature = "save")]
             #[doc = "Save this "]
