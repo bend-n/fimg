@@ -239,6 +239,7 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
 macro_rules! save {
     ($channels:literal == $clr:ident ($clrhuman:literal)) => {
         impl Image<Vec<u8>, $channels> {
+            #[cfg(feature = "save")]
             #[doc = "Save this "]
             #[doc = $clrhuman]
             #[doc = " image."]
