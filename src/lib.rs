@@ -1,5 +1,6 @@
 #![feature(
     slice_swap_unchecked,
+    slice_as_chunks,
     unchecked_math,
     portable_simd,
     array_chunks,

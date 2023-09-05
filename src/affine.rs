@@ -104,35 +104,33 @@ impl<const CHANNELS: usize> Rotations for Image<&mut [u8], CHANNELS> {
         // This is done by first flipping
         self.flip_v();
         // Then transposing the image, to save allocations.
-        // SAFETY: caller ensures rectangularity
+        // SAFETY: caller ensures square
         unsafe { transpose(self) };
     }
 
     #[inline]
     unsafe fn rot_270(&mut self) {
         self.flip_h();
-        // SAFETY: caller ensures rectangularity
+        // SAFETY: caller ensures squareness
         unsafe { transpose(self) };
     }
 }
 
+/// Transpose a square image
 /// # Safety
 ///
 /// UB if supplied image rectangular
 unsafe fn transpose<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>) {
     debug_assert_eq!(img.width(), img.height());
-    let size = img.width();
+    let size = img.width() as usize;
+    // SAFETY: no half pixels
+    let b = unsafe { img.buffer.as_chunks_unchecked_mut::<CHANNELS>() };
     for i in 0..size {
         for j in i..size {
-            for c in 0..CHANNELS {
-                // SAFETY: caller gurantees rectangularity
-                unsafe {
-                    img.buffer.swap_unchecked(
-                        (i * size + j) as usize * CHANNELS + c,
-                        (j * size + i) as usize * CHANNELS + c,
-                    );
-                };
-            }
+            // SAFETY: caller ensures squarity
+            unsafe {
+                b.swap_unchecked(i * size + j, j * size + i);
+            };
         }
     }
 }
