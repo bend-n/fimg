@@ -12,6 +12,7 @@
 #![warn(
     clippy::missing_docs_in_private_items,
     clippy::multiple_unsafe_ops_per_block,
+    clippy::undocumented_unsafe_blocks,
     clippy::missing_const_for_fn,
     clippy::missing_safety_doc,
     unsafe_op_in_unsafe_fn,
@@ -66,7 +67,9 @@ impl Image<&[u8], 3> {
 #[inline]
 unsafe fn really_unsafe_index(x: u32, y: u32, w: u32) -> usize {
     // y * w + x
+    // SAFETY: FIXME make safe math
     let tmp = unsafe { (y as usize).unchecked_mul(w as usize) };
+    // SAFETY: FIXME make safe math
     unsafe { tmp.unchecked_add(x as usize) }
 }
 
@@ -137,9 +140,12 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
     unsafe fn slice(&self, x: u32, y: u32) -> impl SliceIndex<[u8], Output = [u8]> {
         debug_assert!(x < self.width(), "x out of bounds");
         debug_assert!(y < self.height(), "y out of bounds");
+        // SAFETY: me when uncheck math: 😧
         let index = unsafe { really_unsafe_index(x, y, self.width()) };
+        // SAFETY: 🧐 is unsound? 😖
         let index = unsafe { index.unchecked_mul(CHANNELS) };
         debug_assert!(self.buffer.len() > index);
+        // SAFETY: as long as the buffer isnt wrong, this is 😄
         index..unsafe { index.unchecked_add(CHANNELS) }
     }
 
@@ -160,8 +166,11 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
     /// - UB if buffer is too small
     #[inline]
     pub unsafe fn pixel(&self, x: u32, y: u32) -> [u8; CHANNELS] {
+        // SAFETY: we have been told x, y is in bounds
         let idx = unsafe { self.slice(x, y) };
+        // SAFETY: slice always returns a valid index
         let ptr = unsafe { self.buffer.get_unchecked(idx).as_ptr().cast() };
+        // SAFETY: slice always returns a length of `CHANNELS`, so we `cast()` it for convenience.
         unsafe { *ptr }
     }
 }
@@ -174,7 +183,9 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
     /// - UB if buffer is too small
     #[inline]
     pub unsafe fn pixel_mut(&mut self, x: u32, y: u32) -> &mut [u8] {
+        // SAFETY: we have been told x, y is in bounds.
         let idx = unsafe { self.slice(x, y) };
+        // SAFETY: slice should always return a valid index
         unsafe { self.buffer.get_unchecked_mut(idx) }
     }
 

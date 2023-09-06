@@ -18,11 +18,14 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
         for y in 0..self.height() / 2 {
             for x in 0..self.width() {
                 let y2 = self.height() - y - 1;
+                #[allow(clippy::multiple_unsafe_ops_per_block)]
                 // SAFETY: within bounds
-                let p2 = unsafe { self.pixel(x, y2) };
-                let p = unsafe { self.pixel(x, y) };
-                unsafe { self.set_pixel(x, y2, p) };
-                unsafe { self.set_pixel(x, y, p2) };
+                unsafe {
+                    let p2 = self.pixel(x, y2);
+                    let p = self.pixel(x, y);
+                    self.set_pixel(x, y2, p);
+                    self.set_pixel(x, y, p2);
+                }
             }
         }
     }
@@ -32,10 +35,14 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
         for y in 0..self.height() {
             for x in 0..self.width() / 2 {
                 let x2 = self.width() - x - 1;
-                let p2 = unsafe { self.pixel(x2, y) };
-                let p = unsafe { self.pixel(x, y) };
-                unsafe { self.set_pixel(x2, y, p) };
-                unsafe { self.set_pixel(x, y, p2) };
+                #[allow(clippy::multiple_unsafe_ops_per_block)]
+                // SAFETY: bounded
+                unsafe {
+                    let p2 = self.pixel(x2, y);
+                    let p = self.pixel(x, y);
+                    self.set_pixel(x2, y, p);
+                    self.set_pixel(x, y, p2);
+                }
             }
         }
     }
@@ -52,6 +59,7 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     ///
     /// UB if the image is not square
     pub unsafe fn rot_90(&mut self) {
+        // SAFETY: make sure to keep the safety docs linked
         unsafe { self.as_mut().rot_90() }
     }
 
@@ -60,6 +68,7 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     ///
     /// UB if the image is not square
     pub unsafe fn rot_270(&mut self) {
+        // SAFETY: idk this is just a convenience impl
         unsafe { self.as_mut().rot_270() }
     }
 }
@@ -69,11 +78,15 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
     pub fn rot_180(&mut self) {
         for y in 0..self.height() / 2 {
             for x in 0..self.width() {
+                // SAFETY: x, y come from the loop, must be ok
                 let p = unsafe { self.pixel(x, y) };
                 let x2 = self.width() - x - 1;
                 let y2 = self.height() - y - 1;
+                // SAFETY: values are good
                 let p2 = unsafe { self.pixel(x2, y2) };
+                // SAFETY: swapping would be cool, alas.
                 unsafe { self.set_pixel(x, y, p2) };
+                // SAFETY: although maybe i can cast it to a `[[u8; CHANNELS]]` and swap that 🤔
                 unsafe { self.set_pixel(x2, y2, p) };
             }
         }
@@ -82,11 +95,15 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
             let middle = self.height() / 2;
 
             for x in 0..self.width() / 2 {
-                let p = unsafe { self.pixel(x, middle) };
                 let x2 = self.width() - x - 1;
-                let p2 = unsafe { self.pixel(x2, middle) };
-                unsafe { self.set_pixel(x, middle, p2) };
-                unsafe { self.set_pixel(x2, middle, p) };
+                #[allow(clippy::multiple_unsafe_ops_per_block)]
+                // SAFETY: its just doing the swappy
+                unsafe {
+                    let p = self.pixel(x, middle);
+                    let p2 = self.pixel(x2, middle);
+                    self.set_pixel(x, middle, p2);
+                    self.set_pixel(x2, middle, p);
+                }
             }
         }
     }

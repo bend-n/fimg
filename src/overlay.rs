@@ -26,11 +26,17 @@ pub trait Overlay<W> {
 /// SIMD accelerated rgba => rgb overlay.
 ///
 /// See [blit](https://en.wikipedia.org/wiki/Bit_blit)
+///
+/// # Safety
+/// UB if rgb.len() % 3 != 0
+/// UB if rgba.len() % 4 != 0
 unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     let mut srci = 0;
     let mut dsti = 0;
     while dsti + 16 <= rgb.len() {
+        // SAFETY: i think it ok
         let old: Simd<u8, 16> = Simd::from_slice(unsafe { rgb.get_unchecked(dsti..dsti + 16) });
+        // SAFETY: definetly ok
         let new: Simd<u8, 16> = Simd::from_slice(unsafe { rgba.get_unchecked(srci..srci + 16) });
 
         let threshold = new.simd_ge(Simd::splat(128)).to_int().cast::<u8>();
@@ -44,6 +50,7 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
 
         let new_rgb = simd_swizzle!(new, [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 0, 0, 0, 0]);
         let blended = (new_rgb & mask) | (old & !mask);
+        // SAFETY: 4 * 4 == 16, so in bounds
         blended.copy_to_slice(unsafe { rgb.get_unchecked_mut(dsti..dsti + 16) });
 
         srci += 16;
@@ -51,10 +58,13 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     }
 
     while dsti + 3 <= rgb.len() {
+        // SAFETY: caller gurantees slice is big enough
         if unsafe { *rgba.get_unchecked(srci + 3) } >= 128 {
-            let src = unsafe { rgba.get_unchecked(srci..srci + 3) };
-            let end = unsafe { rgb.get_unchecked_mut(dsti..dsti + 3) };
-            unsafe { std::ptr::copy_nonoverlapping(src.as_ptr(), end.as_mut_ptr(), 3) };
+            // SAFETY: slice is big enough!
+            let src = unsafe { rgba.get_unchecked(srci..=srci + 2) };
+            // SAFETY: i hear it bound
+            let end = unsafe { rgb.get_unchecked_mut(dsti..=dsti + 2) };
+            end.copy_from_slice(src);
         }
 
         srci += 4;
@@ -69,16 +79,9 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
         debug_assert!(self.height() == with.height());
         for (i, other_pixels) in with.chunked().enumerate() {
             if other_pixels[3] >= 128 {
-                let idx_begin = unsafe { i.unchecked_mul(4) };
-                let idx_end = unsafe { idx_begin.unchecked_add(4) };
-                let own_pixels = unsafe { self.buffer.get_unchecked_mut(idx_begin..idx_end) };
-                unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        other_pixels.as_ptr(),
-                        own_pixels.as_mut_ptr(),
-                        4,
-                    );
-                };
+                // SAFETY: outside are bounds of index from slice
+                let own_pixels = unsafe { self.buffer.get_unchecked_mut(i * 4..i * 4 + 4) };
+                own_pixels.copy_from_slice(other_pixels);
             }
         }
         self
@@ -88,9 +91,9 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
 impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<&[u8], 4>, x: u32, y: u32) -> &mut Self {
-        // SAFETY: caller upholds these
+        // SAFETY: caller upholds this
         unsafe { assert_unchecked!(x + with.width() <= self.width()) };
-        unsafe { assert_unchecked!(y + with.height() <= self.height()) };
+        debug_assert!(y + with.height() <= self.height());
         for j in 0..with.height() {
             let i_x = j as usize * with.width() as usize * 4
                 ..(j as usize + 1) * with.width() as usize * 4;
@@ -99,8 +102,11 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
                     + x as usize
                     + with.width() as usize)
                     * 3;
+            // SAFETY: index is in bounds
             let rgb = unsafe { self.buffer.get_unchecked_mut(o_x) };
+            // SAFETY: bounds are outside index
             let rgba = unsafe { with.buffer.get_unchecked(i_x) };
+            // SAFETY: arguments are 🟢
             unsafe { blit(rgb, rgba) }
         }
         self
@@ -125,7 +131,9 @@ impl OverlayAt<Image<&[u8], 3>> for Image<&mut [u8], 3> {
                     let o_x = ((j + y as usize) * self.width() as usize + x as usize) * 3
                         ..((j + y as usize) * self.width() as usize + x as usize + ($n as usize))
                             * 3;
+                    // SAFETY: bounds are ✅
                     let a = unsafe { self.buffer.get_unchecked_mut(o_x) };
+                    // SAFETY: we are in ⬜!
                     let b = unsafe { with.buffer.get_unchecked(i_x) };
                     a.copy_from_slice(b);
                 }
@@ -151,11 +159,13 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 3> {
             .chunks_exact(with.width() as usize * 4)
             .enumerate()
         {
+            // SAFETY: all the bounds are good
             let rgb = unsafe {
                 self.buffer.get_unchecked_mut(
                     i * with.width() as usize * 3..(i + 1) * with.width() as usize * 3,
                 )
             };
+            // SAFETY: we have the rgb and rgba arguments right
             unsafe { blit(rgb, chunk) };
         }
         self
@@ -164,15 +174,30 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 3> {
 
 impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
     #[inline]
+    /// Overlay with => self at coordinates x, y, without blending
+    ///
+    /// # Safety
+    /// UB if x, y is out of bounds
+    /// UB if x + with.width() > u32::MAX
+    /// UB if y + with.height() > u32::MAX
     unsafe fn overlay_at(&mut self, with: &Image<&[u8], 4>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {
             for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
                 let index = unsafe { really_unsafe_index(i, j, with.width()) };
+                // SAFETY: using .pixel() results in horrible asm (+5k ns/iter)
                 let their_px = unsafe { with.buffer.get_unchecked(index * 4..index * 4 + 4) };
+                // SAFETY: must be sized right
                 if unsafe { *their_px.get_unchecked(3) } >= 128 {
+                    // SAFETY:
+                    // they said it cant go over.
+                    // i dont know why, but this has performance importance™
                     let x = unsafe { i.unchecked_add(x) };
+                    // SAFETY: caller gurantees this cannot overflow.
                     let y = unsafe { j.unchecked_add(y) };
+                    // SAFETY: compute the offset index.
                     let index = unsafe { really_unsafe_index(x, y, self.width()) };
+                    // SAFETY: if everything else goes well, this is fine
                     let our_px = unsafe { self.buffer.get_unchecked_mut(index * 4..index * 4 + 4) };
                     our_px.copy_from_slice(their_px);
                 }
