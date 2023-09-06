@@ -1,3 +1,4 @@
+//! Manages the affine image transformations.
 use crate::Image;
 
 impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {

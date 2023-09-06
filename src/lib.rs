@@ -1,3 +1,6 @@
+//! # fimg
+//!
+//! Provides fast image operations, such as rotation, flipping, and overlaying.
 #![feature(
     slice_swap_unchecked,
     slice_as_chunks,
@@ -7,12 +10,13 @@
     test
 )]
 #![warn(
+    clippy::missing_docs_in_private_items,
     clippy::multiple_unsafe_ops_per_block,
     clippy::missing_const_for_fn,
     clippy::missing_safety_doc,
     unsafe_op_in_unsafe_fn,
     clippy::dbg_macro,
-    clippy::perf
+    missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal)]
 
@@ -22,6 +26,10 @@ mod affine;
 mod overlay;
 pub use overlay::{Overlay, OverlayAt};
 
+/// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
+///
+/// # Safety
+/// UB if condition is false.
 macro_rules! assert_unchecked {
     ($cond:expr) => {{
         if !$cond {
@@ -54,6 +62,7 @@ impl Image<&[u8], 3> {
     }
 }
 
+/// calculates a column major index, with unchecked math
 #[inline]
 unsafe fn really_unsafe_index(x: u32, y: u32, w: u32) -> usize {
     // y * w + x
@@ -98,7 +107,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     #[inline]
     /// create a new image
     pub const fn new(width: NonZeroU32, height: NonZeroU32, buffer: T) -> Self {
-        Image {
+        Self {
             buffer,
             width,
             height,
@@ -229,13 +238,15 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// if width || height == 0
     #[must_use]
     pub fn alloc(width: u32, height: u32) -> Self {
-        Image {
+        Self {
             width: width.try_into().unwrap(),
             height: height.try_into().unwrap(),
             buffer: vec![0; CHANNELS * width as usize * height as usize],
         }
     }
 }
+
+/// helper macro for defining the save() method.
 macro_rules! save {
     ($channels:literal == $clr:ident ($clrhuman:literal)) => {
         impl Image<Vec<u8>, $channels> {

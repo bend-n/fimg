@@ -1,3 +1,4 @@
+//! Handles image overlay
 use super::{assert_unchecked, really_unsafe_index, Image};
 use std::simd::SimdInt;
 use std::simd::SimdPartialOrd;
@@ -22,11 +23,10 @@ pub trait Overlay<W> {
 }
 
 #[inline]
+/// SIMD accelerated rgba => rgb overlay.
+///
+/// See [blit](https://en.wikipedia.org/wiki/Bit_blit)
 unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
-    const LAST4: Simd<u8, 16> = Simd::from_array([
-        255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0,
-    ]);
-
     let mut srci = 0;
     let mut dsti = 0;
     while dsti + 16 <= rgb.len() {
@@ -38,7 +38,9 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
             threshold,
             [3, 3, 3, 7, 7, 7, 11, 11, 11, 15, 15, 15, 0, 0, 0, 0]
         );
-        mask &= LAST4;
+        mask &= Simd::from_array([
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0,
+        ]);
 
         let new_rgb = simd_swizzle!(new, [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 0, 0, 0, 0]);
         let blended = (new_rgb & mask) | (old & !mask);
@@ -106,8 +108,16 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
 }
 
 impl OverlayAt<Image<&[u8], 3>> for Image<&mut [u8], 3> {
+    /// Overlay a RGB image(with) => self at coordinates x, y.
+    /// As this is a `RGBxRGB` operation, blending is unnecessary,
+    /// and this is simply a copy.
+    ///
+    /// # Safety
+    ///
+    /// UB if x, y is out of bounds
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<&[u8], 3>, x: u32, y: u32) -> &mut Self {
+        /// helper macro for defining rgb=>rgb overlays. allows unrolling
         macro_rules! o3x3 {
             ($n:expr) => {{
                 for j in 0..($n as usize) {
