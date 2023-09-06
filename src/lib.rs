@@ -136,6 +136,22 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     }
 }
 
+impl<const CHANNELS: usize, T: Clone> Image<&[T], CHANNELS> {
+    /// Allocate a new `Image<Vec<T>>` from this imageref.
+    pub fn to_owned(&self) -> Image<Vec<T>, CHANNELS> {
+        // SAFETY: we have been constructed already, so must be valid
+        unsafe { Image::new(self.width, self.height, self.buffer.to_vec()) }
+    }
+}
+
+impl<const CHANNELS: usize, T: Clone> Image<&mut [T], CHANNELS> {
+    /// Allocate a new `Image<Vec<T>>` from this mutable imageref.
+    pub fn to_owned(&self) -> Image<Vec<T>, CHANNELS> {
+        // SAFETY: we have been constructed already, so must be valid
+        unsafe { Image::new(self.width, self.height, self.buffer.to_vec()) }
+    }
+}
+
 impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     #[inline]
     #[must_use]
@@ -159,7 +175,6 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     /// let img = Image::make::<5, 5>();
     /// # let img: Image<_, 4> = img;
     /// ```
-
     pub const fn make<'a, const WIDTH: u32, const HEIGHT: u32>() -> Image<&'a [u8], CHANNELS>
     where
         [(); CHANNELS * WIDTH as usize * HEIGHT as usize]: Sized,
@@ -169,12 +184,6 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
             height: NonZeroU32::new(HEIGHT).expect("passed zero height to builder"),
             buffer: &[0; CHANNELS * WIDTH as usize * HEIGHT as usize],
         }
-    }
-
-    /// Allocate a new Image<Vec<u8>>.
-    pub fn to_owned(&self) -> Image<Vec<u8>, CHANNELS> {
-        // SAFETY: we have been constructed already, so must be valid
-        unsafe { Image::new(self.width, self.height, self.buffer.to_vec()) }
     }
 }
 
@@ -266,9 +275,7 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
         // SAFETY: we got constructed okay, parameters must be valid
         unsafe { Image::new(self.width, self.height, self.buffer) }
     }
-}
 
-impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
     /// Copy this ref image
     pub fn copy(&mut self) -> Image<&mut [u8], CHANNELS> {
         #[allow(clippy::undocumented_unsafe_blocks)]
