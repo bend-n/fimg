@@ -3,9 +3,11 @@
 //! Provides fast image operations, such as rotation, flipping, and overlaying.
 #![feature(
     slice_swap_unchecked,
+    generic_const_exprs,
     slice_as_chunks,
     unchecked_math,
     portable_simd,
+    const_option,
     array_chunks,
     test
 )]
@@ -19,7 +21,7 @@
     clippy::dbg_macro,
     missing_docs
 )]
-#![allow(clippy::zero_prefixed_literal)]
+#![allow(clippy::zero_prefixed_literal, incomplete_features)]
 
 use std::{num::NonZeroU32, slice::SliceIndex};
 
@@ -138,6 +140,29 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
             width: self.width,
             height: self.height,
             buffer: self.buffer,
+        }
+    }
+
+    /// Create a new immutable image of width x, y.
+    ///
+    /// # Panics
+    ///
+    /// if width || height == 0
+    ///
+    /// ```
+    /// # use fimg::Image;
+    /// let img = Image::make::<5, 5>();
+    /// # let img: Image<_, 4> = img;
+    /// ```
+
+    pub const fn make<'a, const WIDTH: u32, const HEIGHT: u32>() -> Image<&'a [u8], CHANNELS>
+    where
+        [(); CHANNELS * WIDTH as usize * HEIGHT as usize]: Sized,
+    {
+        Image {
+            width: NonZeroU32::new(WIDTH).expect("passed zero width to builder"),
+            height: NonZeroU32::new(HEIGHT).expect("passed zero height to builder"),
+            buffer: &[0; CHANNELS * WIDTH as usize * HEIGHT as usize],
         }
     }
 }
