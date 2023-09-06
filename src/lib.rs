@@ -24,6 +24,7 @@
 use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
+pub mod builder;
 mod overlay;
 pub use overlay::{Overlay, OverlayAt};
 
@@ -77,11 +78,11 @@ unsafe fn really_unsafe_index(x: u32, y: u32, w: u32) -> usize {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Image<T, const CHANNELS: usize> {
     /// column order 2d slice/vec
-    pub buffer: T,
+    buffer: T,
     /// image horizontal size
-    pub width: NonZeroU32,
+    width: NonZeroU32,
     /// image vertical size
-    pub height: NonZeroU32,
+    height: NonZeroU32,
 }
 
 impl<const CHANNELS: usize> Default for Image<&'static [u8], CHANNELS> {
@@ -109,12 +110,32 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 
     #[inline]
     /// create a new image
-    pub const fn new(width: NonZeroU32, height: NonZeroU32, buffer: T) -> Self {
+    ///
+    /// # Safety
+    ///
+    /// does not check that buffer.len() == w * h * C
+    ///
+    /// using this with invalid values may result in future UB
+    pub const unsafe fn new(width: NonZeroU32, height: NonZeroU32, buffer: T) -> Self {
         Self {
             buffer,
             width,
             height,
         }
+    }
+
+    /// returns a immutable reference to the backing buffer
+    pub const fn buffer(&self) -> &T {
+        &self.buffer
+    }
+
+    /// returns a mutable(!) reference to the backing buffer
+    ///
+    /// # Safety
+    ///
+    /// please do not change buffer size.
+    pub unsafe fn buffer_mut(&mut self) -> &mut T {
+        &mut self.buffer
     }
 }
 
@@ -216,28 +237,38 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
 impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
     /// Downcast the mutable reference
     pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
-        Image::new(self.width, self.height, self.buffer)
+        // SAFETY: we got constructed okay, parameters must be valid
+        unsafe { Image::new(self.width, self.height, self.buffer) }
     }
 }
 
 impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
     /// Copy this ref image
     pub fn copy(&mut self) -> Image<&mut [u8], CHANNELS> {
-        Image::new(self.width, self.height, self.buffer)
+        #[allow(clippy::undocumented_unsafe_blocks)]
+        unsafe {
+            Image::new(self.width, self.height, self.buffer)
+        }
     }
 }
 
 impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// Create a reference to this owned image
     pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
-        Image::new(self.width, self.height, &self.buffer)
+        #[allow(clippy::undocumented_unsafe_blocks)]
+        unsafe {
+            Image::new(self.width, self.height, &self.buffer)
+        }
     }
 }
 
 impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// Create a mutable reference to this owned image
     pub fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
-        Image::new(self.width, self.height, &mut self.buffer)
+        #[allow(clippy::undocumented_unsafe_blocks)]
+        unsafe {
+            Image::new(self.width, self.height, &mut self.buffer)
+        }
     }
 }
 
@@ -302,14 +333,9 @@ save!(1 == Grayscale("Y"));
 
 #[cfg(test)]
 macro_rules! img {
-    [[$($v:literal),+] [$($v2:literal),+]] => {{
-        let from: Image<Vec<u8>, 1> = Image::new(
-            2.try_into().unwrap(),
-            2.try_into().unwrap(),
-            vec![$($v,)+ $($v2,)+]
-        );
-        from
-    }}
+    [[$($v:literal),+] [$($v2:literal),+]] => {
+        Image::<Vec<u8>, 1>::build(2,2).buf(vec![$($v,)+ $($v2,)+])
+    }
 }
 #[cfg(test)]
 use img;

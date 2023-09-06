@@ -7,11 +7,8 @@ macro_rules! bench {
     (fn $name: ident() { run $fn: ident() }) => {
         #[bench]
         fn $name(b: &mut Bencher) {
-            let mut img: Image<_, 4> = Image::new(
-                64.try_into().unwrap(),
-                64.try_into().unwrap(),
-                include_bytes!("4_180x180.imgbuf").to_vec(),
-            );
+            let mut img: Image<_, 4> =
+                Image::build(64, 64).buf(include_bytes!("4_180x180.imgbuf").to_vec());
             #[allow(unused_unsafe)]
             b.iter(|| unsafe {
                 for _ in 0..256 {
