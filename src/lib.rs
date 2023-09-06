@@ -85,16 +85,6 @@ pub struct Image<T, const CHANNELS: usize> {
     height: NonZeroU32,
 }
 
-impl<const CHANNELS: usize> Default for Image<&'static [u8], CHANNELS> {
-    fn default() -> Self {
-        Self {
-            buffer: &[0; CHANNELS],
-            width: NonZeroU32::new(1).unwrap(),
-            height: NonZeroU32::new(1).unwrap(),
-        }
-    }
-}
-
 impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     #[inline]
     /// get the height as a [`u32`]
