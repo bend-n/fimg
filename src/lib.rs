@@ -116,6 +116,11 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         }
     }
 
+    /// consumes the image, returning the image buffer
+    pub fn take_buffer(self) -> T {
+        self.buffer
+    }
+
     /// returns a immutable reference to the backing buffer
     pub const fn buffer(&self) -> &T {
         &self.buffer
@@ -164,6 +169,12 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
             height: NonZeroU32::new(HEIGHT).expect("passed zero height to builder"),
             buffer: &[0; CHANNELS * WIDTH as usize * HEIGHT as usize],
         }
+    }
+
+    /// Allocate a new Image<Vec<u8>>.
+    pub fn to_owned(&self) -> Image<Vec<u8>, CHANNELS> {
+        // SAFETY: we have been constructed already, so must be valid
+        unsafe { Image::new(self.width, self.height, self.buffer.to_vec()) }
     }
 }
 
