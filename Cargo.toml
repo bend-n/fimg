@@ -10,6 +10,17 @@ repository = "https://github.com/bend-n/fimg"
 [dependencies]
 png = { version = "0.17", features = ["unstable"], optional = true }
 
+[dev-dependencies]
+iai = { version = "0.1.1", features = [], git = "https://github.com/bend-n/iai/" }
+
+[[bench]]
+name = "overlays"
+harness = false
+
+[[bench]]
+name = "affine_transformations"
+harness = false
+
 [features]
 save = ["png"]
 default = ["save"]

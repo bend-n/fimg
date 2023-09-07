@@ -32,10 +32,14 @@ impl<B: buf::Buffer, const C: usize> Builder<B, C> {
     }
 
     /// apply a buffer, and build
+    #[track_caller]
     pub fn buf(self, buffer: B) -> Image<B, C> {
-        if buffer.len() as u32 != C as u32 * self.width * self.height {
-            panic!("invalid buffer size");
-        }
+        let len = C as u32 * self.width * self.height;
+        assert!(
+            buffer.len() as u32 == len,
+            "invalid buffer size (expected {len}, got {})",
+            buffer.len()
+        );
         Image {
             buffer,
             width: self.width.try_into().expect("passed zero width to builder"),
