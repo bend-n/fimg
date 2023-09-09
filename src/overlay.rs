@@ -28,8 +28,8 @@ pub trait Overlay<W> {
 /// See [blit](https://en.wikipedia.org/wiki/Bit_blit)
 ///
 /// # Safety
-/// UB if rgb.len() % 3 != 0
-/// UB if rgba.len() % 4 != 0
+/// - UB if rgb.len() % 3 != 0
+/// - UB if rgba.len() % 4 != 0
 unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     let mut srci = 0;
     let mut dsti = 0;
@@ -180,9 +180,9 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
     /// Overlay with => self at coordinates x, y, without blending
     ///
     /// # Safety
-    /// UB if x, y is out of bounds
-    /// UB if x + with.width() > u32::MAX
-    /// UB if y + with.height() > u32::MAX
+    /// - UB if x, y is out of bounds
+    /// - UB if x + with.width() > [`u32::MAX`]
+    /// - UB if y + with.height() > [`u32::MAX`]
     unsafe fn overlay_at(&mut self, with: &Image<&[u8], 4>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {
             for i in 0..with.width() {

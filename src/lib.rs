@@ -33,6 +33,7 @@ pub use overlay::{Overlay, OverlayAt};
 /// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
 ///
 /// # Safety
+///
 /// UB if condition is false.
 macro_rules! assert_unchecked {
     ($cond:expr) => {{
