@@ -131,8 +131,9 @@ impl OverlayAt<Image<&[u8], 3>> for Image<&mut [u8], 3> {
                     let o_x = ((j + y as usize) * self.width() as usize + x as usize) * 3
                         ..((j + y as usize) * self.width() as usize + x as usize + ($n as usize))
                             * 3;
-                    debug_assert!(o_x.end < self.buffer().len());
-                    debug_assert!(i_x.end < with.buffer().len());
+                    // <= because ".." range
+                    debug_assert!(o_x.end <= self.buffer().len());
+                    debug_assert!(i_x.end <= with.buffer().len());
                     // SAFETY: bounds are ✅
                     let a = unsafe { self.buffer.get_unchecked_mut(o_x) };
                     // SAFETY: we are in ⬜!

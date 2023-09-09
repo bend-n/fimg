@@ -372,3 +372,13 @@ macro_rules! img {
 }
 #[cfg(test)]
 use img;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn repeat() {
+        let x: Image<&[u8], 3> = Image::build(8, 8).buf(include_bytes!("../benches/3_8x8.imgbuf"));
+        unsafe { x.repeated(128, 128) }; // repeat 16 times
+    }
+}
