@@ -27,6 +27,7 @@ use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
 pub mod builder;
+mod drawing;
 mod overlay;
 pub use overlay::{Overlay, OverlayAt};
 
