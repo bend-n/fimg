@@ -3,6 +3,7 @@
 //! Provides fast image operations, such as rotation, flipping, and overlaying.
 #![feature(
     slice_swap_unchecked,
+    stmt_expr_attributes,
     generic_const_exprs,
     slice_as_chunks,
     unchecked_math,
@@ -218,6 +219,13 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
         self.buffer.array_chunks::<CHANNELS>()
     }
 
+    #[inline]
+    /// Flatten the chunks of this image into a slice of slices.
+    pub fn flatten(&mut self) -> &[[u8; CHANNELS]] {
+        // SAFETY: buffer cannot have half pixels
+        unsafe { self.buffer.as_chunks_unchecked::<CHANNELS>() }
+    }
+
     /// Return a pixel at (x, y).
     /// # Safety
     ///
@@ -256,6 +264,13 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
         // SAFETY: buffer cannot have half pixels
         unsafe { assert_unchecked!(self.buffer.len() % CHANNELS == 0) };
         self.buffer.array_chunks_mut::<CHANNELS>()
+    }
+
+    #[inline]
+    /// Flatten the chunks of this image into a mutable slice of slices.
+    pub fn flatten_mut(&mut self) -> &mut [[u8; CHANNELS]] {
+        // SAFETY: buffer cannot have half pixels
+        unsafe { self.buffer.as_chunks_unchecked_mut::<CHANNELS>() }
     }
 
     /// Set the pixel at x, y

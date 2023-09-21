@@ -139,6 +139,22 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
 /// UB if supplied image rectangular
 unsafe fn transpose<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>) {
     debug_assert_eq!(img.width(), img.height());
+    if img.width().is_power_of_two() {
+        // SAFETY: caller gurantees
+        unsafe { transpose_diag(img, 0, img.width() as usize) };
+    } else {
+        // SAFETY: caller gurantees
+        unsafe { transpose_non_power_of_two(img) };
+    }
+}
+
+/// Transpose a square (non power of two) image.
+///
+/// # Safety
+///
+/// UB if image not square
+unsafe fn transpose_non_power_of_two<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>) {
+    debug_assert_eq!(img.width(), img.height());
     let size = img.width() as usize;
     // SAFETY: no half pixels
     let b = unsafe { img.buffer.as_chunks_unchecked_mut::<CHANNELS>() };
@@ -152,10 +168,134 @@ unsafe fn transpose<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>)
     }
 }
 
+/// break it down until
+const TILE: usize = 4;
+/// # Safety
+///
+/// be careful
+unsafe fn transpose_tile<const CHANNELS: usize>(
+    img: &mut Image<&mut [u8], CHANNELS>,
+    row: usize,
+    col: usize,
+    size: usize,
+) {
+    if size > TILE {
+        #[allow(
+            clippy::multiple_unsafe_ops_per_block,
+            clippy::undocumented_unsafe_blocks
+        )]
+        unsafe {
+            // top left
+            transpose_tile(img, row, col, size / 2);
+            // top right
+            transpose_tile(img, row, col + size / 2, size / 2);
+            // bottom left
+            transpose_tile(img, row + size / 2, col, size / 2);
+            // bottom right
+            transpose_tile(img, row + size / 2, col + size / 2, size / 2);
+        }
+    } else {
+        let s = img.width() as usize;
+        let b = img.flatten_mut();
+        for i in 0..size {
+            for j in 0..size {
+                // SAFETY: this should be okay if we careful
+                unsafe { b.swap_unchecked((row + i) * s + (col + j), (col + j) * s + (row + i)) };
+            }
+        }
+    }
+}
+
+/// # Safety
+///
+/// be careful
+unsafe fn transpose_diag<const CHANNELS: usize>(
+    img: &mut Image<&mut [u8], CHANNELS>,
+    pos: usize,
+    size: usize,
+) {
+    if size > TILE {
+        #[allow(
+            clippy::multiple_unsafe_ops_per_block,
+            clippy::undocumented_unsafe_blocks
+        )]
+        unsafe {
+            transpose_diag(img, pos, size / 2);
+            transpose_tile(img, pos, pos + size / 2, size / 2);
+            transpose_diag(img, pos + size / 2, size / 2);
+        }
+    } else {
+        let s = img.width() as usize;
+        let b = img.flatten_mut();
+        for i in 1..size {
+            for j in 0..i {
+                // SAFETY: this is fine unless pos / size is out of bounds, which it cant be
+                unsafe { b.swap_unchecked((pos + i) * s + (pos + j), (pos + j) * s + (pos + i)) };
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::img;
+
+    #[test]
+    fn transp() {
+        #[rustfmt::skip]
+        let mut i = Image::<_, 1>::build(8, 8).buf(vec![
+            0, 0, 1, 1, 0, 0, 1, 1,
+            0, 1, 0, 1, 1, 0, 1, 1,
+            0, 1, 1, 0, 1, 0, 1, 1,
+            0, 1, 1, 1, 0, 0, 1, 1,
+            0, 1, 1, 1, 1, 0, 1, 1,
+            0, 1, 1, 1, 1, 0, 0, 1,
+            0, 1, 1, 1, 1, 0, 1, 0,
+            0, 0, 1, 1, 1, 0, 1, 1,
+        ]);
+        unsafe { transpose(&mut i.as_mut()) };
+        #[rustfmt::skip]
+        assert_eq!(i.take_buffer(), vec![
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 0,
+            1, 0, 1, 1, 1, 1, 1, 1,
+            1, 1, 0, 1, 1, 1, 1, 1,
+            0, 1, 1, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            1, 1, 1, 1, 1, 0, 1, 1,
+            1, 1, 1, 1, 1, 1, 0, 1
+        ]);
+    }
+
+    #[test]
+    fn transp9() {
+        #[rustfmt::skip]
+        let mut i = Image::<_, 1>::build(9, 9).buf(vec![
+            0, 0, 1, 1, 0, 0, 1, 1, 0,
+            0, 1, 0, 1, 1, 0, 1, 1, 1,
+            0, 1, 1, 0, 1, 0, 1, 1, 0,
+            0, 1, 1, 1, 0, 0, 1, 1, 0,
+            0, 1, 1, 1, 1, 0, 1, 1, 1,
+            0, 1, 1, 1, 1, 0, 0, 1, 1,
+            0, 1, 1, 1, 1, 0, 1, 0, 1,
+            0, 0, 1, 1, 1, 0, 1, 1, 0,
+            1, 1, 1, 0, 1, 1, 0, 1, 0,
+        ]);
+        unsafe { transpose(&mut i.as_mut()) };
+        #[rustfmt::skip]
+        assert_eq!(i.take_buffer(), vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 1,
+            0, 1, 1, 1, 1, 1, 1, 0, 1,
+            1, 0, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 0, 1, 1, 1, 1, 1, 0,
+            0, 1, 1, 0, 1, 1, 1, 1, 1,
+            0, 0, 0, 0, 0, 0, 0, 0, 1,
+            1, 1, 1, 1, 1, 0, 1, 1, 0,
+            1, 1, 1, 1, 1, 1, 0, 1, 1,
+            0, 1, 0, 0, 1, 1, 1, 0, 0
+        ]);
+    }
 
     #[test]
     fn rotate_90() {

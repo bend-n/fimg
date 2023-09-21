@@ -4,7 +4,7 @@ macro_rules! bench {
     (fn $name: ident() { run $fn: ident() }) => {
         fn $name() {
             let mut img: Image<_, 4> =
-                Image::build(160, 160).buf(include_bytes!("4_160x160.imgbuf").to_vec());
+                Image::build(128, 128).buf(include_bytes!("4_128x128.imgbuf").to_vec());
             for _ in 0..256 {
                 #[allow(unused_unsafe)]
                 unsafe {
