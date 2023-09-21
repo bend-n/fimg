@@ -1,4 +1,4 @@
-//! Box<cat>
+//! `Box<cat>`
 use crate::Image;
 
 impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
