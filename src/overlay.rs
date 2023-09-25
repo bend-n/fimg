@@ -15,8 +15,16 @@ pub trait OverlayAt<W> {
     unsafe fn overlay_at(&mut self, with: &W, x: u32, y: u32) -> &mut Self;
 }
 
+/// Sealant module
+mod sealed {
+    /// Seals the cloner traits
+    pub trait Sealed {}
+}
+use sealed::Sealed;
+impl<const N: usize> Sealed for ImageCloner<'_, N> {}
+
 /// [`OverlayAt`] but owned
-pub trait ClonerOverlayAt<const W: usize, const C: usize> {
+pub trait ClonerOverlayAt<const W: usize, const C: usize>: Sealed {
     /// Overlay with => self at coordinates x, y, without blending, and returning a new image.
     /// # Safety
     ///
@@ -35,7 +43,7 @@ pub trait Overlay<W> {
 }
 
 /// [`Overlay`] but owned
-pub trait ClonerOverlay<const W: usize, const C: usize> {
+pub trait ClonerOverlay<const W: usize, const C: usize>: Sealed {
     /// Overlay with => self (does not blend)
     /// # Safety
     ///
