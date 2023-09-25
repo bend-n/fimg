@@ -18,6 +18,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// let a = Image::<_, 1>::build(2,2).buf(vec![21,42,90,01]);
     /// assert_eq!(a.cloner().flip_v().take_buffer(), [90,01,21,42]);
     /// ```
+    #[must_use = "function does not modify the original image"]
     pub fn flip_v(&self) -> Image<Vec<u8>, CHANNELS> {
         let mut out = self.alloc();
         for y in 0..self.height() {
@@ -37,6 +38,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// let a = Image::<_,1>::build(2,2).buf(vec![90,01,21,42]);
     /// assert_eq!(a.cloner().flip_h().take_buffer(), [01,90,42,21]);
     /// ```
+    #[must_use = "function does not modify the original image"]
     pub fn flip_h(&self) -> Image<Vec<u8>, CHANNELS> {
         let mut out = self.alloc();
         for y in 0..self.height() {
@@ -120,6 +122,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// let a = Image::<_,1>::build(2,2).buf(vec![00,01,02,10]);
     /// assert_eq!(a.cloner().rot_180().take_buffer(), vec![10,02,01,00]);
     /// ```
+    #[must_use = "function does not modify the original image"]
     pub fn rot_180(&self) -> Image<Vec<u8>, CHANNELS> {
         let s = (self.width() * self.height()) as usize;
         let mut v: Vec<[u8; CHANNELS]> = Vec::with_capacity(s);
@@ -140,6 +143,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// # Safety
     ///
     /// UB if the image is not square
+    #[must_use = "function does not modify the original image"]
     pub unsafe fn rot_90(&self) -> Image<Vec<u8>, CHANNELS> {
         let mut out = self.flip_v();
         // SAFETY: sqar
@@ -151,6 +155,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// # Safety
     ///
     /// UB if the image is not square
+    #[must_use = "function does not modify the original image"]
     pub unsafe fn rot_270(&self) -> Image<Vec<u8>, CHANNELS> {
         let mut out = self.flip_h();
         // SAFETY: sqar

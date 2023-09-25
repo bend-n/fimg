@@ -246,6 +246,7 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
     }
 
     /// Procure a [`ImageCloner`].
+    #[must_use = "function does not modify the original image"]
     pub fn cloner(&self) -> ImageCloner<'_, CHANNELS> {
         ImageCloner::from(self.as_ref())
     }

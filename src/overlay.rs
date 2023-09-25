@@ -119,6 +119,7 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
 
 impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
     #[inline]
+    #[must_use = "function does not modify the original image"]
     unsafe fn overlay(&self, with: &Image<&[u8], 4>) -> Image<Vec<u8>, 4> {
         let mut out = self.dup();
         // SAFETY: same
@@ -153,6 +154,8 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
 }
 
 impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
+    #[inline]
+    #[must_use = "function does not modify the original image"]
     unsafe fn overlay_at(&self, with: &Image<&[u8], 4>, x: u32, y: u32) -> Image<Vec<u8>, 3> {
         let mut new = self.dup();
         // SAFETY: same
@@ -225,6 +228,7 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 3> {
 
 impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
     #[inline]
+    #[must_use = "function does not modify the original image"]
     unsafe fn overlay(&self, with: &Image<&[u8], 4>) -> Image<Vec<u8>, 3> {
         let mut out = self.dup();
         // SAFETY: same
@@ -271,6 +275,7 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
 
 impl ClonerOverlayAt<4, 4> for ImageCloner<'_, 4> {
     #[inline]
+    #[must_use = "function does not modify the original image"]
     /// Overlay with => self at coordinates x, y, without blending, returning a new Image
     ///
     /// # Safety
