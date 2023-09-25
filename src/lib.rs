@@ -34,7 +34,7 @@ mod drawing;
 mod overlay;
 pub mod scale;
 use cloner::ImageCloner;
-pub use overlay::{Overlay, OverlayAt};
+pub use overlay::{ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};
 
 /// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
 ///
