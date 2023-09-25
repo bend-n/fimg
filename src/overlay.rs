@@ -1,4 +1,6 @@
 //! Handles image overlay
+use crate::cloner::ImageCloner;
+
 use super::{assert_unchecked, really_unsafe_index, Image};
 use std::simd::SimdInt;
 use std::simd::SimdPartialOrd;
@@ -12,6 +14,16 @@ pub trait OverlayAt<W> {
     /// UB if x, y is out of bounds
     unsafe fn overlay_at(&mut self, with: &W, x: u32, y: u32) -> &mut Self;
 }
+
+/// [`OverlayAt`] but owned
+pub trait ClonerOverlayAt<const W: usize, const C: usize> {
+    /// Overlay with => self at coordinates x, y, without blending, and returning a new image.
+    /// # Safety
+    ///
+    /// UB if x, y is out of bounds
+    unsafe fn overlay_at(&self, with: &Image<&[u8], W>, x: u32, y: u32) -> Image<Vec<u8>, C>;
+}
+
 /// Trait for layering images ontop of each other.
 /// Think `magick a b -layers flatten a`
 pub trait Overlay<W> {
@@ -20,6 +32,15 @@ pub trait Overlay<W> {
     ///
     /// UB if a.width != b.width || a.height != b.height
     unsafe fn overlay(&mut self, with: &W) -> &mut Self;
+}
+
+/// [`Overlay`] but owned
+pub trait ClonerOverlay<const W: usize, const C: usize> {
+    /// Overlay with => self (does not blend)
+    /// # Safety
+    ///
+    /// UB if a.width != b.width || a.height != b.height
+    unsafe fn overlay(&self, with: &Image<&[u8], W>) -> Image<Vec<u8>, C>;
 }
 
 #[inline]
@@ -88,6 +109,16 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
     }
 }
 
+impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
+    #[inline]
+    unsafe fn overlay(&self, with: &Image<&[u8], 4>) -> Image<Vec<u8>, 4> {
+        let mut out = self.dup();
+        // SAFETY: same
+        unsafe { out.as_mut().overlay(with) };
+        out
+    }
+}
+
 impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<&[u8], 4>, x: u32, y: u32) -> &mut Self {
@@ -110,6 +141,15 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
             unsafe { blit(rgb, rgba) }
         }
         self
+    }
+}
+
+impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
+    unsafe fn overlay_at(&self, with: &Image<&[u8], 4>, x: u32, y: u32) -> Image<Vec<u8>, 3> {
+        let mut new = self.dup();
+        // SAFETY: same
+        unsafe { new.as_mut().overlay_at(with, x, y) };
+        new
     }
 }
 
@@ -175,6 +215,16 @@ impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 3> {
     }
 }
 
+impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
+    #[inline]
+    unsafe fn overlay(&self, with: &Image<&[u8], 4>) -> Image<Vec<u8>, 3> {
+        let mut out = self.dup();
+        // SAFETY: same
+        unsafe { out.as_mut().overlay(with) };
+        out
+    }
+}
+
 impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
     #[inline]
     /// Overlay with => self at coordinates x, y, without blending
@@ -208,5 +258,21 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
         }
 
         self
+    }
+}
+
+impl ClonerOverlayAt<4, 4> for ImageCloner<'_, 4> {
+    #[inline]
+    /// Overlay with => self at coordinates x, y, without blending, returning a new Image
+    ///
+    /// # Safety
+    /// - UB if x, y is out of bounds
+    /// - UB if x + with.width() > [`u32::MAX`]
+    /// - UB if y + with.height() > [`u32::MAX`]
+    unsafe fn overlay_at(&self, with: &Image<&[u8], 4>, x: u32, y: u32) -> Image<Vec<u8>, 4> {
+        let mut out = self.dup();
+        // SAFETY: same
+        unsafe { out.as_mut().overlay_at(with, x, y) };
+        out
     }
 }

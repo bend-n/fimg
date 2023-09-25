@@ -1,19 +1,58 @@
 //! Manages the affine image transformations.
-use crate::Image;
+use crate::{cloner::ImageCloner, Image};
 
 impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Flip a image horizontally.
+    /// Flip an image horizontally.
     pub fn flip_h(&mut self) {
         self.as_mut().flip_h();
     }
-    /// Flip a image vertically.
+    /// Flip an image vertically.
     pub fn flip_v(&mut self) {
         self.as_mut().flip_v();
     }
 }
+impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
+    /// Flip an image vertically.
+    /// ```
+    /// # use fimg::Image;
+    /// let a = Image::<_, 1>::build(2,2).buf(vec![21,42,90,01]);
+    /// assert_eq!(a.cloner().flip_v().take_buffer(), [90,01,21,42]);
+    /// ```
+    pub fn flip_v(&self) -> Image<Vec<u8>, CHANNELS> {
+        let mut out = self.alloc();
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                // SAFETY: looping over self, all ok (could be safe versions, bounds would be elided)
+                let p = unsafe { self.pixel(x, y) };
+                // SAFETY: looping over self.
+                unsafe { out.set_pixel(x, self.height() - y - 1, p) };
+            }
+        }
+        out
+    }
+
+    /// Flip an image horizontally
+    /// ```
+    /// # use fimg::Image;
+    /// let a = Image::<_,1>::build(2,2).buf(vec![90,01,21,42]);
+    /// assert_eq!(a.cloner().flip_h().take_buffer(), [01,90,42,21]);
+    /// ```
+    pub fn flip_h(&self) -> Image<Vec<u8>, CHANNELS> {
+        let mut out = self.alloc();
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                // SAFETY: looping over self, all ok
+                let p = unsafe { self.pixel(x, y) };
+                // SAFETY: looping over self, all ok
+                unsafe { out.set_pixel(self.width() - x - 1, y, p) };
+            }
+        }
+        out
+    }
+}
 
 impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
-    /// Flip a image vertically.
+    /// Flip an image vertically.
     pub fn flip_v(&mut self) {
         for y in 0..self.height() / 2 {
             for x in 0..self.width() {
@@ -30,7 +69,7 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
         }
     }
 
-    /// Flip a image horizontally.
+    /// Flip an image horizontally.
     pub fn flip_h(&mut self) {
         for y in 0..self.height() {
             for x in 0..self.width() / 2 {
@@ -49,12 +88,12 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
 }
 
 impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Rotate a image 180 degrees clockwise.
+    /// Rotate an image 180 degrees clockwise.
     pub fn rot_180(&mut self) {
         self.as_mut().rot_180();
     }
 
-    /// Rotate a image 90 degrees clockwise.
+    /// Rotate an image 90 degrees clockwise.
     /// # Safety
     ///
     /// UB if the image is not square
@@ -63,7 +102,7 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
         unsafe { self.as_mut().rot_90() }
     }
 
-    /// Rotate a image 270 degrees clockwise, or 90 degrees anti clockwise.
+    /// Rotate an image 270 degrees clockwise, or 90 degrees anti clockwise.
     /// # Safety
     ///
     /// UB if the image is not square
@@ -73,42 +112,60 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
-    /// Rotate a image 180 degrees clockwise.
-    pub fn rot_180(&mut self) {
-        for y in 0..self.height() / 2 {
-            for x in 0..self.width() {
-                // SAFETY: x, y come from the loop, must be ok
-                let p = unsafe { self.pixel(x, y) };
-                let x2 = self.width() - x - 1;
-                let y2 = self.height() - y - 1;
-                // SAFETY: values are good
-                let p2 = unsafe { self.pixel(x2, y2) };
-                // SAFETY: swapping would be cool, alas.
-                unsafe { self.set_pixel(x, y, p2) };
-                // SAFETY: although maybe i can cast it to a `[[u8; CHANNELS]]` and swap that 🤔
-                unsafe { self.set_pixel(x2, y2, p) };
-            }
+impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
+    /// Rotate an image 180 degrees clockwise.
+    ///
+    /// ```
+    /// # use fimg::Image;
+    /// let a = Image::<_,1>::build(2,2).buf(vec![00,01,02,10]);
+    /// assert_eq!(a.cloner().rot_180().take_buffer(), vec![10,02,01,00]);
+    /// ```
+    pub fn rot_180(&self) -> Image<Vec<u8>, CHANNELS> {
+        let s = (self.width() * self.height()) as usize;
+        let mut v: Vec<[u8; CHANNELS]> = Vec::with_capacity(s);
+        for (x, y) in self.chunked().rev().zip(&mut v.spare_capacity_mut()[..]) {
+            y.write(*x);
         }
-
-        if self.height() % 2 != 0 {
-            let middle = self.height() / 2;
-
-            for x in 0..self.width() / 2 {
-                let x2 = self.width() - x - 1;
-                #[allow(clippy::multiple_unsafe_ops_per_block)]
-                // SAFETY: its just doing the swappy
-                unsafe {
-                    let p = self.pixel(x, middle);
-                    let p2 = self.pixel(x2, middle);
-                    self.set_pixel(x, middle, p2);
-                    self.set_pixel(x2, middle, p);
-                }
-            }
-        }
+        // SAFETY: we just wrote the right amount
+        unsafe { v.set_len(s) };
+        let (v, _, c) = v.into_raw_parts();
+        let s = s * CHANNELS;
+        // SAFETY: init with with_cap, set len to s, s is init amount, chunked returns nm, capacity handled, flatten vec
+        let v = unsafe { Vec::from_raw_parts(v.cast::<u8>(), s, c * CHANNELS) };
+        // SAFETY: s is w * h.
+        unsafe { Image::new(self.width, self.height, v) }
     }
 
-    /// Rotate a image 90 degrees clockwise.
+    /// Rotate an image 90 degrees clockwise.
+    /// # Safety
+    ///
+    /// UB if the image is not square
+    pub unsafe fn rot_90(&self) -> Image<Vec<u8>, CHANNELS> {
+        let mut out = self.flip_v();
+        // SAFETY: sqar
+        unsafe { transpose(&mut out.as_mut()) };
+        out
+    }
+
+    /// Rotate an image 270 degrees clockwise, or 90 degrees anti clockwise.
+    /// # Safety
+    ///
+    /// UB if the image is not square
+    pub unsafe fn rot_270(&self) -> Image<Vec<u8>, CHANNELS> {
+        let mut out = self.flip_h();
+        // SAFETY: sqar
+        unsafe { transpose(&mut out.as_mut()) };
+        out
+    }
+}
+
+impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+    /// Rotate an image 180 degrees clockwise.
+    pub fn rot_180(&mut self) {
+        self.flatten_mut().reverse();
+    }
+
+    /// Rotate an image 90 degrees clockwise.
     /// # Safety
     ///
     /// UB if the image is not square
@@ -121,7 +178,7 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
         unsafe { transpose(self) };
     }
 
-    /// Rotate a image 270 degrees clockwise, or 90 degrees anti clockwise.
+    /// Rotate an image 270 degrees clockwise, or 90 degrees anti clockwise.
     /// # Safety
     ///
     /// UB if the image is not square
@@ -156,8 +213,7 @@ unsafe fn transpose<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>)
 unsafe fn transpose_non_power_of_two<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>) {
     debug_assert_eq!(img.width(), img.height());
     let size = img.width() as usize;
-    // SAFETY: no half pixels
-    let b = unsafe { img.buffer.as_chunks_unchecked_mut::<CHANNELS>() };
+    let b = img.flatten_mut();
     for i in 0..size {
         for j in i..size {
             // SAFETY: caller ensures squarity

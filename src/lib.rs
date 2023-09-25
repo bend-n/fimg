@@ -5,6 +5,7 @@
     slice_swap_unchecked,
     stmt_expr_attributes,
     generic_const_exprs,
+    vec_into_raw_parts,
     slice_as_chunks,
     unchecked_math,
     portable_simd,
@@ -28,9 +29,11 @@ use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
 pub mod builder;
+pub mod cloner;
 mod drawing;
 mod overlay;
 pub mod scale;
+use cloner::ImageCloner;
 pub use overlay::{Overlay, OverlayAt};
 
 /// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
@@ -81,7 +84,7 @@ unsafe fn really_unsafe_index(x: u32, y: u32, w: u32) -> usize {
 }
 
 /// A image with a variable number of channels, and a nonzero size.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Image<T, const CHANNELS: usize> {
     /// column order 2d slice/vec
     buffer: T,
@@ -89,6 +92,37 @@ pub struct Image<T, const CHANNELS: usize> {
     width: NonZeroU32,
     /// image vertical size
     height: NonZeroU32,
+}
+
+impl<T: Clone, const CHANNELS: usize> Clone for Image<T, CHANNELS> {
+    /// Returns a duplicate of this image.
+    /// ```
+    /// # use fimg::Image;
+    /// # let i = Image::<Vec<_>, 1>::alloc(5,5);
+    /// let new_i = i.clone();
+    /// ```
+    /// If you find yourself in the pattern of
+    /// ```
+    /// # use fimg::Image;
+    /// # let i = Image::<Vec<_>, 1>::alloc(5,5);
+    /// let mut i = i.clone();
+    /// unsafe { i.rot_90() };
+    /// ```
+    /// STOP!
+    ///
+    /// Instead use
+    /// ```
+    /// # use fimg::Image;
+    /// # let i = Image::<Vec<_>, 1>::alloc(5,5);
+    /// let i = unsafe { i.cloner().rot_90() };
+    /// ```
+    fn clone(&self) -> Self {
+        Self {
+            buffer: self.buffer.clone(),
+            width: self.width,
+            height: self.height,
+        }
+    }
 }
 
 impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
@@ -156,6 +190,8 @@ impl<const CHANNELS: usize, T: Clone> Image<&mut [T], CHANNELS> {
     }
 }
 
+impl<const CHANNELS: usize> Copy for Image<&[u8], CHANNELS> {}
+
 impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     #[inline]
     #[must_use]
@@ -209,9 +245,20 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
         index..unsafe { index.unchecked_add(CHANNELS) }
     }
 
+    /// Procure a [`ImageCloner`].
+    pub fn cloner(&self) -> ImageCloner<'_, CHANNELS> {
+        ImageCloner::from(self.as_ref())
+    }
+
+    /// Reference this image.
+    pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
+        // SAFETY: we got constructed okay, parameters must be valid
+        unsafe { Image::new(self.width, self.height, &*self.buffer) }
+    }
+
     #[inline]
     /// Returns a iterator over every pixel
-    pub fn chunked(&self) -> impl Iterator<Item = &[u8; CHANNELS]> {
+    pub fn chunked(&self) -> impl DoubleEndedIterator<Item = &[u8; CHANNELS]> {
         // SAFETY: 0 sized images illegal
         unsafe { assert_unchecked!(self.buffer.len() > CHANNELS) };
         // SAFETY: no half pixels!
@@ -266,6 +313,12 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
         self.buffer.array_chunks_mut::<CHANNELS>()
     }
 
+    /// Create a mutref to this image
+    pub fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
+        // SAFETY: construction went okay
+        unsafe { Image::new(self.width, self.height, &mut self.buffer) }
+    }
+
     #[inline]
     /// Flatten the chunks of this image into a mutable slice of slices.
     pub fn flatten_mut(&mut self) -> &mut [[u8; CHANNELS]] {
@@ -288,37 +341,11 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
 }
 
 impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
-    /// Downcast the mutable reference
-    pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
-        // SAFETY: we got constructed okay, parameters must be valid
-        unsafe { Image::new(self.width, self.height, self.buffer) }
-    }
-
     /// Copy this ref image
     pub fn copy(&mut self) -> Image<&mut [u8], CHANNELS> {
         #[allow(clippy::undocumented_unsafe_blocks)]
         unsafe {
             Image::new(self.width, self.height, self.buffer)
-        }
-    }
-}
-
-impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Create a reference to this owned image
-    pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
-        #[allow(clippy::undocumented_unsafe_blocks)]
-        unsafe {
-            Image::new(self.width, self.height, &self.buffer)
-        }
-    }
-}
-
-impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Create a mutable reference to this owned image
-    pub fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
-        #[allow(clippy::undocumented_unsafe_blocks)]
-        unsafe {
-            Image::new(self.width, self.height, &mut self.buffer)
         }
     }
 }
