@@ -33,9 +33,9 @@ impl Nearest {
 
 #[test]
 fn test_nearest() {
-    let i = Image::<_, 3>::open("src/cat.png");
+    let i = Image::<_, 3>::open("tdata/cat.png");
     assert_eq!(
         unsafe { Nearest::scale(i.as_ref(), 268, 178) }.buffer,
-        Image::<_, 3>::open("src/small_cat.png").buffer
+        Image::<_, 3>::open("tdata/small_cat.png").buffer
     );
 }

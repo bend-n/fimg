@@ -1,12 +1,12 @@
 [package]
 name = "fimg"
-version = "0.4.6"
+version = "0.4.7"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
 description = "fast image operations"
 repository = "https://github.com/bend-n/fimg"
-exclude = ["src/cat.png", "src/small_cat.png", "benches/"]
+exclude = ["tdata", "benches/"]
 
 [dependencies]
 png = { version = "0.17", features = ["unstable"], optional = true }
