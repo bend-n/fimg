@@ -1,16 +1,8 @@
 //! Manages the affine image transformations.
+use std::ops::{Deref, DerefMut};
+
 use crate::{cloner::ImageCloner, Image};
 
-impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Flip an image horizontally.
-    pub fn flip_h(&mut self) {
-        self.as_mut().flip_h();
-    }
-    /// Flip an image vertically.
-    pub fn flip_v(&mut self) {
-        self.as_mut().flip_v();
-    }
-}
 impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// Flip an image vertically.
     /// ```
@@ -53,7 +45,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+impl<const CHANNELS: usize, T: Deref<Target = [u8]> + DerefMut<Target = [u8]>> Image<T, CHANNELS> {
     /// Flip an image vertically.
     pub fn flip_v(&mut self) {
         for y in 0..self.height() / 2 {
@@ -86,31 +78,6 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
                 }
             }
         }
-    }
-}
-
-impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Rotate an image 180 degrees clockwise.
-    pub fn rot_180(&mut self) {
-        self.as_mut().rot_180();
-    }
-
-    /// Rotate an image 90 degrees clockwise.
-    /// # Safety
-    ///
-    /// UB if the image is not square
-    pub unsafe fn rot_90(&mut self) {
-        // SAFETY: make sure to keep the safety docs linked
-        unsafe { self.as_mut().rot_90() }
-    }
-
-    /// Rotate an image 270 degrees clockwise, or 90 degrees anti clockwise.
-    /// # Safety
-    ///
-    /// UB if the image is not square
-    pub unsafe fn rot_270(&mut self) {
-        // SAFETY: idk this is just a convenience impl
-        unsafe { self.as_mut().rot_270() }
     }
 }
 
@@ -164,7 +131,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+impl<const CHANNELS: usize, T: Deref<Target = [u8]> + DerefMut<Target = [u8]>> Image<T, CHANNELS> {
     /// Rotate an image 180 degrees clockwise.
     pub fn rot_180(&mut self) {
         self.flatten_mut().reverse();
@@ -199,7 +166,9 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
 /// # Safety
 ///
 /// UB if supplied image rectangular
-unsafe fn transpose<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>) {
+unsafe fn transpose<const CHANNELS: usize, T: Deref<Target = [u8]> + DerefMut<Target = [u8]>>(
+    img: &mut Image<T, CHANNELS>,
+) {
     debug_assert_eq!(img.width(), img.height());
     if img.width().is_power_of_two() {
         // SAFETY: caller gurantees
@@ -215,7 +184,12 @@ unsafe fn transpose<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>)
 /// # Safety
 ///
 /// UB if image not square
-unsafe fn transpose_non_power_of_two<const CHANNELS: usize>(img: &mut Image<&mut [u8], CHANNELS>) {
+unsafe fn transpose_non_power_of_two<
+    const CHANNELS: usize,
+    T: Deref<Target = [u8]> + DerefMut<Target = [u8]>,
+>(
+    img: &mut Image<T, CHANNELS>,
+) {
     debug_assert_eq!(img.width(), img.height());
     let size = img.width() as usize;
     let b = img.flatten_mut();
@@ -234,8 +208,11 @@ const TILE: usize = 4;
 /// # Safety
 ///
 /// be careful
-unsafe fn transpose_tile<const CHANNELS: usize>(
-    img: &mut Image<&mut [u8], CHANNELS>,
+unsafe fn transpose_tile<
+    const CHANNELS: usize,
+    T: Deref<Target = [u8]> + DerefMut<Target = [u8]>,
+>(
+    img: &mut Image<T, CHANNELS>,
     row: usize,
     col: usize,
     size: usize,
@@ -270,8 +247,11 @@ unsafe fn transpose_tile<const CHANNELS: usize>(
 /// # Safety
 ///
 /// be careful
-unsafe fn transpose_diag<const CHANNELS: usize>(
-    img: &mut Image<&mut [u8], CHANNELS>,
+unsafe fn transpose_diag<
+    const CHANNELS: usize,
+    T: Deref<Target = [u8]> + DerefMut<Target = [u8]>,
+>(
+    img: &mut Image<T, CHANNELS>,
     pos: usize,
     size: usize,
 ) {

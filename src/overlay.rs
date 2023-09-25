@@ -2,9 +2,8 @@
 use crate::cloner::ImageCloner;
 
 use super::{assert_unchecked, really_unsafe_index, Image};
-use std::simd::SimdInt;
-use std::simd::SimdPartialOrd;
-use std::simd::{simd_swizzle, Simd};
+use std::ops::{Deref, DerefMut};
+use std::simd::{simd_swizzle, Simd, SimdInt, SimdPartialOrd};
 
 /// Trait for layering a image ontop of another, with a offset to the second image.
 pub trait OverlayAt<W> {
@@ -101,9 +100,11 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     }
 }
 
-impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
+    Overlay<Image<U, 4>> for Image<T, 4>
+{
     #[inline]
-    unsafe fn overlay(&mut self, with: &Image<&[u8], 4>) -> &mut Self {
+    unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
         for (i, other_pixels) in with.chunked().enumerate() {
@@ -128,9 +129,11 @@ impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
     }
 }
 
-impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 3> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
+    OverlayAt<Image<U, 4>> for Image<T, 3>
+{
     #[inline]
-    unsafe fn overlay_at(&mut self, with: &Image<&[u8], 4>, x: u32, y: u32) -> &mut Self {
+    unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         // SAFETY: caller upholds this
         unsafe { assert_unchecked!(x + with.width() <= self.width()) };
         debug_assert!(y + with.height() <= self.height());
@@ -164,7 +167,9 @@ impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
     }
 }
 
-impl OverlayAt<Image<&[u8], 3>> for Image<&mut [u8], 3> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
+    OverlayAt<Image<U, 3>> for Image<T, 3>
+{
     /// Overlay a RGB image(with) => self at coordinates x, y.
     /// As this is a `RGBxRGB` operation, blending is unnecessary,
     /// and this is simply a copy.
@@ -173,7 +178,7 @@ impl OverlayAt<Image<&[u8], 3>> for Image<&mut [u8], 3> {
     ///
     /// UB if x, y is out of bounds
     #[inline]
-    unsafe fn overlay_at(&mut self, with: &Image<&[u8], 3>, x: u32, y: u32) -> &mut Self {
+    unsafe fn overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
         /// helper macro for defining rgb=>rgb overlays. allows unrolling
         macro_rules! o3x3 {
             ($n:expr) => {{
@@ -203,9 +208,11 @@ impl OverlayAt<Image<&[u8], 3>> for Image<&mut [u8], 3> {
     }
 }
 
-impl Overlay<Image<&[u8], 4>> for Image<&mut [u8], 3> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
+    Overlay<Image<U, 4>> for Image<T, 3>
+{
     #[inline]
-    unsafe fn overlay(&mut self, with: &Image<&[u8], 4>) -> &mut Self {
+    unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
         for (i, chunk) in with
@@ -237,7 +244,9 @@ impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
     }
 }
 
-impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
+    OverlayAt<Image<U, 4>> for Image<T, 4>
+{
     #[inline]
     /// Overlay with => self at coordinates x, y, without blending
     ///
@@ -245,7 +254,7 @@ impl OverlayAt<Image<&[u8], 4>> for Image<&mut [u8], 4> {
     /// - UB if x, y is out of bounds
     /// - UB if x + with.width() > [`u32::MAX`]
     /// - UB if y + with.height() > [`u32::MAX`]
-    unsafe fn overlay_at(&mut self, with: &Image<&[u8], 4>, x: u32, y: u32) -> &mut Self {
+    unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.

@@ -9,6 +9,7 @@ impl Nearest {
     /// # Safety
     ///
     /// `image` must be as big or bigger than `width`, `height.
+    #[must_use = "function does not modify the original image"]
     pub unsafe fn scale<const N: usize>(
         image: Image<&[u8], N>,
         width: u32,

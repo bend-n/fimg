@@ -12,7 +12,8 @@ impl<B: buf::Buffer, const C: usize> Image<B, C> {
     }
 }
 
-/// Safe [Image] builder.
+/// Safe [`Image`] builder.
+#[must_use = "builder must be consumed"]
 pub struct Builder<B, const C: usize> {
     /// the width in a zeroable type. zeroable so as to make the check in [`buf`] easier.
     width: u32,
@@ -33,6 +34,7 @@ impl<B: buf::Buffer, const C: usize> Builder<B, C> {
 
     /// apply a buffer, and build
     #[track_caller]
+    #[must_use = "what is it going to do?"]
     pub fn buf(self, buffer: B) -> Image<B, C> {
         let len = C as u32 * self.width * self.height;
         assert!(
@@ -53,6 +55,7 @@ impl<B: buf::Buffer, const C: usize> Builder<B, C> {
 
 impl<const C: usize> Builder<Vec<u8>, C> {
     /// allocate this image
+    #[must_use = "what is it going to do?"]
     pub fn alloc(self) -> Image<Vec<u8>, C> {
         Image::alloc(self.width, self.height)
     }

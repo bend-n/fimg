@@ -60,6 +60,7 @@ impl Image<&[u8], 3> {
     /// # Safety
     ///
     /// UB if self's width is not a multiple of x, or self's height is not a multiple of y
+    #[must_use = "function does not modify the original image"]
     pub unsafe fn repeated(&self, x: u32, y: u32) -> Image<Vec<u8>, 3> {
         let mut img = Image::alloc(x, y); // could probably optimize this a ton but eh
         for x in 0..(x / self.width()) {
@@ -448,6 +449,6 @@ mod tests {
     #[test]
     fn repeat() {
         let x: Image<&[u8], 3> = Image::build(8, 8).buf(include_bytes!("../benches/3_8x8.imgbuf"));
-        unsafe { x.repeated(128, 128) }; // repeat 16 times
+        let _ = unsafe { x.repeated(128, 128) }; // repeat 16 times
     }
 }

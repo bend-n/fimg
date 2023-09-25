@@ -1,9 +1,12 @@
 //! adds a `line` function to Image
 #![allow(clippy::missing_docs_in_private_items)]
 use crate::Image;
-use std::iter::Iterator;
+use std::{
+    iter::Iterator,
+    ops::{Deref, DerefMut},
+};
 
-/// taken from https://github.com/mbr/bresenham-rs/
+/// taken from [bresenham-rs](https://github.com/mbr/bresenham-rs)
 pub struct Bresenham {
     x: i32,
     y: i32,
@@ -19,7 +22,7 @@ struct Octant(u8);
 
 impl Octant {
     #[inline]
-    const fn from_points(start: (i32, i32), end: (i32, i32)) -> Octant {
+    const fn from_points(start: (i32, i32), end: (i32, i32)) -> Self {
         let mut dx = end.0 - start.0;
         let mut dy = end.1 - start.1;
 
@@ -35,11 +38,11 @@ impl Octant {
             let tmp = dx;
             dx = dy;
             dy = -tmp;
-            octant += 2
+            octant += 2;
         }
 
         if dx < dy {
-            octant += 1
+            octant += 1;
         }
 
         Octant(octant)
@@ -127,7 +130,7 @@ impl Iterator for Bresenham {
     }
 }
 
-impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draw a line from point a to point b
     ///
     /// Points not in bounds will not be included.

@@ -1,9 +1,9 @@
 //! `Box<cat>`
-use std::ops::Range;
+use std::ops::{Deref, DerefMut, Range};
 
 use crate::Image;
 
-impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
+impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draw a bordered box
     /// ```
     /// # use fimg::Image;
