@@ -100,9 +100,7 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     }
 }
 
-impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
-    Overlay<Image<U, 4>> for Image<T, 4>
-{
+impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> Overlay<Image<U, 4>> for Image<T, 4> {
     #[inline]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
@@ -129,9 +127,7 @@ impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
     }
 }
 
-impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
-    OverlayAt<Image<U, 4>> for Image<T, 3>
-{
+impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>> for Image<T, 3> {
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         // SAFETY: caller upholds this
@@ -167,9 +163,7 @@ impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
     }
 }
 
-impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
-    OverlayAt<Image<U, 3>> for Image<T, 3>
-{
+impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 3>> for Image<T, 3> {
     /// Overlay a RGB image(with) => self at coordinates x, y.
     /// As this is a `RGBxRGB` operation, blending is unnecessary,
     /// and this is simply a copy.
@@ -208,9 +202,7 @@ impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
     }
 }
 
-impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
-    Overlay<Image<U, 4>> for Image<T, 3>
-{
+impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> Overlay<Image<U, 4>> for Image<T, 3> {
     #[inline]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
@@ -244,9 +236,7 @@ impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
     }
 }
 
-impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, U: Deref<Target = [u8]>>
-    OverlayAt<Image<U, 4>> for Image<T, 4>
-{
+impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>> for Image<T, 4> {
     #[inline]
     /// Overlay with => self at coordinates x, y, without blending
     ///
