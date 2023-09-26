@@ -9,6 +9,7 @@
     slice_as_chunks,
     unchecked_math,
     portable_simd,
+    array_windows,
     const_option,
     array_chunks,
     test
@@ -19,8 +20,10 @@
     clippy::undocumented_unsafe_blocks,
     clippy::missing_const_for_fn,
     clippy::missing_safety_doc,
+    clippy::suboptimal_flops,
     unsafe_op_in_unsafe_fn,
     clippy::dbg_macro,
+    clippy::use_self,
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]

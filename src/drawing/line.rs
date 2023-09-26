@@ -45,7 +45,7 @@ impl Octant {
             octant += 1;
         }
 
-        Octant(octant)
+        Self(octant)
     }
 
     #[inline]
@@ -84,7 +84,7 @@ impl Bresenham {
     /// Creates a new iterator. Yields intermediate points between `start`
     /// and `end`. Includes `start` and `end`.
     #[inline]
-    pub const fn new(start: (i32, i32), end: (i32, i32)) -> Bresenham {
+    pub const fn new(start: (i32, i32), end: (i32, i32)) -> Self {
         let octant = Octant::from_points(start, end);
 
         let start = octant.to_octant0(start);
@@ -93,7 +93,7 @@ impl Bresenham {
         let dx = end.0 - start.0;
         let dy = end.1 - start.1;
 
-        Bresenham {
+        Self {
             x: start.0,
             y: start.1,
             dy,
