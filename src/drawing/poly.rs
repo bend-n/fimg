@@ -8,6 +8,7 @@ use crate::Image;
 
 impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draws a filled polygon from a slice of points. Please close your poly. (first == last)
+    ///
     /// Borrowed from [imageproc](https://docs.rs/imageproc/latest/src/imageproc/drawing/polygon.rs.html#31), modified for less allocations.
     /// ```
     /// # use fimg::Image;
@@ -48,8 +49,6 @@ impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, const CHANNELS: usize> I
                 }
             }
             intersections.sort_unstable();
-            // SAFETY: must.
-            unsafe { crate::assert_unchecked!(intersections.len() % 2 == 0) };
             for &[x, y_] in intersections.array_chunks::<2>() {
                 let mut from = min(x, self.width() as i32);
                 let mut to = min(y_, self.width() as i32 - 1);

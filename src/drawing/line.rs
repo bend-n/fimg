@@ -131,7 +131,7 @@ impl Iterator for Bresenham {
 }
 
 impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
-    /// Draw a line from point a to point b
+    /// Draw a line from point a to point b.
     ///
     /// Points not in bounds will not be included.
     ///
@@ -143,6 +143,52 @@ impl<T: Deref<Target = [u8]> + DerefMut<Target = [u8]>, const CHANNELS: usize> I
                 unsafe { self.set_pixel(x, y, color) };
             }
         }
+    }
+
+    /// Draw a thick line from point a to point b.
+    /// Prefer [`Image::line`] when possible.
+    ///
+    /// Points not in bounds will not be included.
+    ///
+    /// Uses [`Image::points`].
+    /// ```
+    /// # use fimg::Image;
+    /// let mut i = Image::alloc(10, 10);
+    /// i.thick_line((2.0, 2.0), (8.0, 8.0), 2.0, [255]);
+    /// # assert_eq!(i.buffer(), b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\x00");
+    /// ```
+    pub fn thick_line(
+        &mut self,
+        (x1, y1): (f32, f32),
+        (x2, y2): (f32, f32),
+        stroke: f32,
+        color: [u8; CHANNELS],
+    ) {
+        let (wx, wy) = {
+            let (x, y) = (y1 - y2, -(x1 - x2));
+            let l = (x * x + y * y).sqrt();
+            ((x / l) * (stroke / 2.0), (y / l) * (stroke / 2.0))
+        };
+        macro_rules! p {
+            ($x:expr,$y:expr) => {
+                #[allow(clippy::cast_possible_truncation)]
+                ($x.round() as i32, $y.round() as i32)
+            };
+        }
+        // order:
+        // v x1 v x2
+        // [    ]
+        // ^ x3 ^ x4
+        self.points(
+            &[
+                p!(x1 - wx, y1 - wy), // x1
+                p!(x2 - wx, y2 - wy), // x2
+                p!(x2 + wx, y2 + wy), // x3
+                p!(x1 + wx, y1 + wy), // x4
+                p!(x1 - wx, y1 - wy), // x1 (close)
+            ],
+            color,
+        );
     }
 }
 
