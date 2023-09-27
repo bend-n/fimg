@@ -1,12 +1,12 @@
 [package]
 name = "fimg"
-version = "0.4.8"
+version = "0.4.9"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
 description = "fast image operations"
 repository = "https://github.com/bend-n/fimg"
-exclude = ["tdata", "benches/"]
+exclude = ["tdata", "benches/", ".gitignore"]
 
 [dependencies]
 png = { version = "0.17", features = ["unstable"], optional = true }
@@ -16,10 +16,12 @@ iai = { version = "0.1.1", features = [], git = "https://github.com/bend-n/iai/"
 
 [[bench]]
 name = "overlays"
+path = "benches/overlays.rs"
 harness = false
 
 [[bench]]
 name = "affine_transformations"
+path = "benches/affine_transformations.rs"
 harness = false
 
 [features]
