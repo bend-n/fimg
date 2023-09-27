@@ -8,6 +8,7 @@
     vec_into_raw_parts,
     slice_as_chunks,
     unchecked_math,
+    slice_flatten,
     portable_simd,
     array_windows,
     const_option,

@@ -98,12 +98,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
         }
         // SAFETY: we just wrote the right amount
         unsafe { v.set_len(s) };
-        let (v, _, c) = v.into_raw_parts();
-        let s = s * CHANNELS;
-        // SAFETY: init with with_cap, set len to s, s is init amount, chunked returns nm, capacity handled, flatten vec
-        let v = unsafe { Vec::from_raw_parts(v.cast::<u8>(), s, c * CHANNELS) };
-        // SAFETY: s is w * h.
-        unsafe { Image::new(self.width, self.height, v) }
+        Image::build(self.width(), self.height()).buf(v.into_flattened())
     }
 
     /// Rotate an image 90 degrees clockwise.
