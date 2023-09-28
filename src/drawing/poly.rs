@@ -70,4 +70,17 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
             self.line((x1, y1), (x2, y2), c);
         }
     }
+
+    /// Draws a filled quadrilateral.
+    /// This currently just uses [`Image::points`], but in the future this may change.
+    pub fn quad(
+        &mut self,
+        a: (i32, i32),
+        b: (i32, i32),
+        c: (i32, i32),
+        d: (i32, i32),
+        col: [u8; CHANNELS],
+    ) {
+        self.points(&[a, b, c, d, a], col);
+    }
 }

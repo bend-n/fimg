@@ -147,7 +147,7 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// Points not in bounds will not be included.
     ///
-    /// Uses [`Image::points`].
+    /// Uses [`Image::quad`].
     /// ```
     /// # use fimg::Image;
     /// let mut i = Image::alloc(10, 10);
@@ -176,14 +176,11 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         // v x1 v x2
         // [    ]
         // ^ x3 ^ x4
-        self.points(
-            &[
-                p!(x1 - wx, y1 - wy), // x1
-                p!(x2 - wx, y2 - wy), // x2
-                p!(x2 + wx, y2 + wy), // x3
-                p!(x1 + wx, y1 + wy), // x4
-                p!(x1 - wx, y1 - wy), // x1 (close)
-            ],
+        self.quad(
+            p!(x1 - wx, y1 - wy), // x1
+            p!(x2 - wx, y2 - wy), // x2
+            p!(x2 + wx, y2 + wy), // x3
+            p!(x1 + wx, y1 + wy), // x4
             color,
         );
     }
