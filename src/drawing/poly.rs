@@ -86,6 +86,7 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     }
 
     /// Draws a regular convex polygon with a specified number of sides, a radius, and a rotation (radians).
+    /// Prefer [`Image::circle`] over `poly(.., 600, ..)`.
     /// Calls into [`Image::tri`] and [`Image::quad`].
     /// ```
     /// # use fimg::Image;
@@ -113,7 +114,7 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 self.tri(
                     add(trans(space + rotation)),
                     add(trans(rotation)),
-                    add(trans(space * 2.0 + rotation)),
+                    add(trans(space.mul_add(2.0, rotation))),
                     c,
                 );
             }
@@ -122,9 +123,9 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 for i in (0..sides - 1).step_by(2).map(|i| i as f32) {
                     self.quad(
                         r((x, y)),
-                        r(add(trans(space * i + rotation))),
-                        r(add(trans(space * (i + 1.) + rotation))),
-                        r(add(trans(space * (i + 2.) + rotation))),
+                        r(add(trans(space.mul_add(i, rotation)))),
+                        r(add(trans(space.mul_add(i + 1., rotation)))),
+                        r(add(trans(space.mul_add(i + 2., rotation)))),
                         c,
                     );
                 }
@@ -134,8 +135,8 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                     // the missing piece
                     self.tri(
                         (x, y),
-                        add(trans(space * i + rotation)),
-                        add(trans(space * (i + 1.) + rotation)),
+                        add(trans(space.mul_add(i, rotation))),
+                        add(trans(space.mul_add(i + 1., rotation))),
                         c,
                     );
                 }

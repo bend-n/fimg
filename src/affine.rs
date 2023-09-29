@@ -188,9 +188,7 @@ unsafe fn transpose_non_power_of_two<const CHANNELS: usize, T: DerefMut<Target =
     for i in 0..size {
         for j in i..size {
             // SAFETY: caller ensures squarity
-            unsafe {
-                b.swap_unchecked(i * size + j, j * size + i);
-            };
+            unsafe { b.swap_unchecked(i * size + j, j * size + i) };
         }
     }
 }
