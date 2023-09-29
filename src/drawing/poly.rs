@@ -1,6 +1,7 @@
 //! draw polygons
 use std::{
     cmp::{max, min},
+    f32::consts::TAU,
     ops::DerefMut,
 };
 
@@ -82,5 +83,63 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         col: [u8; CHANNELS],
     ) {
         self.points(&[a, b, c, d, a], col);
+    }
+
+    /// Draws a regular convex polygon with a specified number of sides, a radius, and a rotation (radians).
+    /// Calls into [`Image::tri`] and [`Image::quad`].
+    /// ```
+    /// # use fimg::Image;
+    /// let mut i = Image::alloc(300, 300);
+    /// //          draw a enneagon
+    /// // at  x150, y150    │  unrotated   white
+    /// // with a radius of ─┼──╮      │      │
+    /// i.poly((150., 150.), 9, 100.0, 0.0, [255]);
+    /// # assert_eq!(i.buffer(), include_bytes!("../../tdata/enneagon.imgbuf"));
+    /// ```
+    pub fn poly(
+        &mut self,
+        (x, y): (f32, f32),
+        sides: usize,
+        radius: f32,
+        rotation: f32,
+        c: [u8; CHANNELS],
+    ) {
+        let trans = |a: f32| (a.cos() * radius, a.sin() * radius);
+        let r = |(a, b): (f32, f32)| (a.round() as i32, b.round() as i32);
+        let add = |(a, b)| (a + x, b + y);
+        match sides {
+            3 => {
+                let space = TAU / 3.0;
+                self.tri(
+                    add(trans(space + rotation)),
+                    add(trans(rotation)),
+                    add(trans(space * 2.0 + rotation)),
+                    c,
+                );
+            }
+            _ => {
+                let space = TAU / sides as f32;
+                for i in (0..sides - 1).step_by(2).map(|i| i as f32) {
+                    self.quad(
+                        r((x, y)),
+                        r(add(trans(space * i + rotation))),
+                        r(add(trans(space * (i + 1.) + rotation))),
+                        r(add(trans(space * (i + 2.) + rotation))),
+                        c,
+                    );
+                }
+
+                if sides % 2 != 0 && sides > 4 {
+                    let i = (sides - 1) as f32;
+                    // the missing piece
+                    self.tri(
+                        (x, y),
+                        add(trans(space * i + rotation)),
+                        add(trans(space * (i + 1.) + rotation)),
+                        c,
+                    );
+                }
+            }
+        }
     }
 }

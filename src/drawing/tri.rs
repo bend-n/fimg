@@ -8,9 +8,13 @@ impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// ```
     /// # use fimg::*;
     /// let mut a = Image::alloc(10, 10);
-    /// // draw a triangle from point a v   point b v    point c v
-    /// //                                               with color white
-    /// a.as_mut().tri((3.0, 2.0), (8.0, 7.0), (1.0, 8.0), [255]);
+    /// // draw a triangle
+    /// a.as_mut().tri(
+    ///   (3.0, 2.0), // point a
+    ///   (8.0, 7.0), // point b
+    ///   (1.0, 8.0), // point c
+    ///   [255] // white
+    /// );
     /// # assert_eq!(a.buffer(), b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
     /// ```
     pub fn tri(
