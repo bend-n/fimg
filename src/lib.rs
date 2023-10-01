@@ -10,8 +10,7 @@
     portable_simd,
     array_windows,
     const_option,
-    array_chunks,
-    test
+    array_chunks
 )]
 #![warn(
     clippy::missing_docs_in_private_items,
@@ -300,7 +299,7 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
 
     #[inline]
     /// Flatten the chunks of this image into a slice of slices.
-    pub fn flatten(&mut self) -> &[[u8; CHANNELS]] {
+    pub fn flatten(&self) -> &[[u8; CHANNELS]] {
         // SAFETY: buffer cannot have half pixels
         unsafe { self.buffer.as_chunks_unchecked::<CHANNELS>() }
     }
