@@ -238,10 +238,6 @@ impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
 
 impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>> for Image<T, 4> {
     #[inline]
-    /// Overlay with => self at coordinates x, y, without blending
-    ///
-    /// # Safety
-    /// - UB if x, y is out of bounds
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {
             for i in 0..with.width() {
@@ -262,12 +258,6 @@ impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>>
 impl ClonerOverlayAt<4, 4> for ImageCloner<'_, 4> {
     #[inline]
     #[must_use = "function does not modify the original image"]
-    /// Overlay with => self at coordinates x, y, without blending, returning a new Image
-    ///
-    /// # Safety
-    /// - UB if x, y is out of bounds
-    /// - UB if x + with.width() > [`u32::MAX`]
-    /// - UB if y + with.height() > [`u32::MAX`]
     unsafe fn overlay_at(&self, with: &Image<&[u8], 4>, x: u32, y: u32) -> Image<Vec<u8>, 4> {
         let mut out = self.dup();
         // SAFETY: same
