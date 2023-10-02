@@ -1,7 +1,7 @@
 //! Handles image overlay
 use crate::cloner::ImageCloner;
 
-use super::{assert_unchecked, really_unsafe_index, Image};
+use super::{assert_unchecked, Image};
 use std::ops::{Deref, DerefMut};
 use std::simd::{simd_swizzle, Simd, SimdInt, SimdPartialOrd};
 
@@ -242,27 +242,14 @@ impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>>
     ///
     /// # Safety
     /// - UB if x, y is out of bounds
-    /// - UB if x + with.width() > [`u32::MAX`]
-    /// - UB if y + with.height() > [`u32::MAX`]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let index = unsafe { really_unsafe_index(i, j, with.width()) };
-                // SAFETY: using .pixel() results in horrible asm (+5k ns/iter)
-                let their_px = unsafe { with.buffer.get_unchecked(index * 4..index * 4 + 4) };
-                // SAFETY: must be sized right
-                if unsafe { *their_px.get_unchecked(3) } >= 128 {
-                    // SAFETY:
-                    // they said it cant go over.
-                    // i dont know why, but this has performance importance™
-                    let x = unsafe { i.unchecked_add(x) };
-                    // SAFETY: caller gurantees this cannot overflow.
-                    let y = unsafe { j.unchecked_add(y) };
-                    // SAFETY: compute the offset index.
-                    let index = unsafe { really_unsafe_index(x, y, self.width()) };
+                let their_px = unsafe { &with.pixel(i, j) };
+                if their_px[3] >= 128 {
                     // SAFETY: if everything else goes well, this is fine
-                    let our_px = unsafe { self.buffer.get_unchecked_mut(index * 4..index * 4 + 4) };
+                    let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                     our_px.copy_from_slice(their_px);
                 }
             }

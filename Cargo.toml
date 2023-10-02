@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.11"
+version = "0.4.12"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -12,7 +12,8 @@ exclude = ["tdata", "benches/", ".gitignore"]
 png = { version = "0.17", features = ["unstable"], optional = true }
 
 [dev-dependencies]
-iai = { version = "0.1.1", features = [], git = "https://github.com/bend-n/iai/" }
+iai = { version = "0.1.1", features = [
+], git = "https://github.com/bend-n/iai/" }
 
 [[bench]]
 name = "overlays"
@@ -22,6 +23,11 @@ harness = false
 [[bench]]
 name = "affine_transformations"
 path = "benches/affine_transformations.rs"
+harness = false
+
+[[bench]]
+name = "tile"
+path = "benches/tile.rs"
 harness = false
 
 [features]
