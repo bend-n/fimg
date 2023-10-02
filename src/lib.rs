@@ -3,9 +3,7 @@
 //! Provides fast image operations, such as rotation, flipping, and overlaying.
 #![feature(
     slice_swap_unchecked,
-    stmt_expr_attributes,
     generic_const_exprs,
-    vec_into_raw_parts,
     slice_as_chunks,
     unchecked_math,
     slice_flatten,
