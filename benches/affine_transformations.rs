@@ -28,8 +28,8 @@ bench!(fn flip_h() { run flip_h() } flip_hc);
 bench!(fn flip_v() { run flip_v() } flip_vc);
 bench!(fn rotate_90() { run rot_90() } rot_90c);
 bench!(fn rotate_180() { run rot_180() } rot_180c);
-bench!(fn rotate_270() { run rot_270() } rot_280c);
+bench!(fn rotate_270() { run rot_270() } rot_270c);
 iai::main!(
     flip_h, flip_v, rotate_90, rotate_180, rotate_270, flip_hc, flip_vc, rot_90c, rot_180c,
-    rot_280c
+    rot_270c
 );

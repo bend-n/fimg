@@ -107,16 +107,8 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// UB if the image is not square
     #[must_use = "function does not modify the original image"]
     pub unsafe fn rot_90(&self) -> Image<Vec<u8>, CHANNELS> {
-        let mut out = self.alloc();
         // SAFETY: yep
-        unsafe {
-            mattr::transpose(
-                self.flatten(),
-                out.flatten_mut(),
-                self.height() as usize,
-                self.width() as usize,
-            )
-        };
+        let mut out = unsafe { transpose_out(self) };
         // SAFETY: sqar
         unsafe { crev(out.as_mut()) };
         out
@@ -128,9 +120,9 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// UB if the image is not square
     #[must_use = "function does not modify the original image"]
     pub unsafe fn rot_270(&self) -> Image<Vec<u8>, CHANNELS> {
-        let mut out = self.flip_h();
-        // SAFETY: sqar
-        unsafe { transpose(&mut out.as_mut()) };
+        // SAFETY: yep
+        let mut out = unsafe { transpose_out(self) };
+        out.flip_v();
         out
     }
 }
@@ -178,12 +170,32 @@ unsafe fn crev<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(mut img: Image
         let mut start = 0;
         let mut end = size - 1;
         while start < end {
-        	// SAFETY: hmm
+            // SAFETY: hmm
             unsafe { b.swap_unchecked(i * size + start, i * size + end) };
             start += 1;
             end -= 1;
         }
     }
+}
+
+/// Transpose a square image out of place
+/// # Safety
+///
+/// UB if provided image rectangular
+unsafe fn transpose_out<const CHANNELS: usize>(
+    i: &ImageCloner<'_, CHANNELS>,
+) -> Image<Vec<u8>, CHANNELS> {
+    let mut out = i.alloc();
+    // SAFETY: yep
+    unsafe {
+        mattr::transpose(
+            i.flatten(),
+            out.flatten_mut(),
+            i.height() as usize,
+            i.width() as usize,
+        )
+    };
+    out
 }
 
 /// Transpose a square image
