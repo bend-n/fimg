@@ -22,6 +22,11 @@ path = "benches/overlays.rs"
 harness = false
 
 [[bench]]
+name = "drawing"
+path = "benches/drawing.rs"
+harness = false
+
+[[bench]]
 name = "affine_transformations"
 path = "benches/affine_transformations.rs"
 harness = false
