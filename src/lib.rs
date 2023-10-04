@@ -243,6 +243,22 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     }
 }
 
+impl<const CHANNELS: usize, const N: usize> Image<[u8; N], CHANNELS> {
+    /// Box this array image.
+    pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
+        // SAFETY: ctor
+        unsafe { Image::new(self.width, self.height, Box::new(self.buffer)) }
+    }
+}
+
+impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
+    /// Box this owned image.
+    pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
+        // SAFETY: ctor
+        unsafe { Image::new(self.width, self.height, self.buffer.into_boxed_slice()) }
+    }
+}
+
 #[macro_export]
 /// Create a <code>[Image]<[[u8]; N], C></code> with ease. If your looking for a <code>[Image]<&'static [[u8]]></code>, try [`Image::make`].
 ///
