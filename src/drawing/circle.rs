@@ -1,8 +1,8 @@
 //! draw 2d circles
 use crate::Image;
-use std::ops::DerefMut;
 
-impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draws a circle, using the [Bresenham's circle](https://en.wikipedia.org/wiki/Midpoint_circle_algorithm) algorithm.
     /// ```
     /// # use fimg::Image;

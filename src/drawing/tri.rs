@@ -1,9 +1,9 @@
 //! trongle drawing
-use std::ops::DerefMut;
+
 
 use crate::Image;
 
-impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draw a (filled) triangle
     /// ```
     /// # use fimg::*;

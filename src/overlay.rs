@@ -2,7 +2,6 @@
 use crate::cloner::ImageCloner;
 
 use super::{assert_unchecked, Image};
-use std::ops::{Deref, DerefMut};
 use std::simd::{simd_swizzle, Simd, SimdInt, SimdPartialOrd};
 
 /// Trait for layering a image ontop of another, with a offset to the second image.
@@ -100,7 +99,7 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     }
 }
 
-impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> Overlay<Image<U, 4>> for Image<T, 4> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Image<T, 4> {
     #[inline]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
@@ -108,7 +107,8 @@ impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> Overlay<Image<U, 4>> f
         for (i, other_pixels) in with.chunked().enumerate() {
             if other_pixels[3] >= 128 {
                 // SAFETY: outside are bounds of index from slice
-                let own_pixels = unsafe { self.buffer.get_unchecked_mut(i * 4..i * 4 + 4) };
+                let own_pixels =
+                    unsafe { self.buffer.as_mut().get_unchecked_mut(i * 4..i * 4 + 4) };
                 own_pixels.copy_from_slice(other_pixels);
             }
         }
@@ -127,7 +127,7 @@ impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
     }
 }
 
-impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>> for Image<T, 3> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Image<T, 3> {
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         // SAFETY: caller upholds this
@@ -142,9 +142,9 @@ impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>>
                     + with.width() as usize)
                     * 3;
             // SAFETY: index is in bounds
-            let rgb = unsafe { self.buffer.get_unchecked_mut(o_x) };
+            let rgb = unsafe { self.buffer.as_mut().get_unchecked_mut(o_x) };
             // SAFETY: bounds are outside index
-            let rgba = unsafe { with.buffer.get_unchecked(i_x) };
+            let rgba = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
             // SAFETY: arguments are 🟢
             unsafe { blit(rgb, rgba) }
         }
@@ -163,7 +163,7 @@ impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
     }
 }
 
-impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 3>> for Image<T, 3> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Image<T, 3> {
     /// Overlay a RGB image(with) => self at coordinates x, y.
     /// As this is a `RGBxRGB` operation, blending is unnecessary,
     /// and this is simply a copy.
@@ -182,12 +182,12 @@ impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 3>>
                         ..((j + y as usize) * self.width() as usize + x as usize + ($n as usize))
                             * 3;
                     // <= because ".." range
-                    debug_assert!(o_x.end <= self.buffer().len());
-                    debug_assert!(i_x.end <= with.buffer().len());
+                    debug_assert!(o_x.end <= self.buffer().as_ref().len());
+                    debug_assert!(i_x.end <= with.buffer().as_ref().len());
                     // SAFETY: bounds are ✅
-                    let a = unsafe { self.buffer.get_unchecked_mut(o_x) };
+                    let a = unsafe { self.buffer.as_mut().get_unchecked_mut(o_x) };
                     // SAFETY: we are in ⬜!
-                    let b = unsafe { with.buffer.get_unchecked(i_x) };
+                    let b = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
                     a.copy_from_slice(b);
                 }
             }};
@@ -202,19 +202,20 @@ impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 3>>
     }
 }
 
-impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> Overlay<Image<U, 4>> for Image<T, 3> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Image<T, 3> {
     #[inline]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
         for (i, chunk) in with
             .buffer
+            .as_ref()
             .chunks_exact(with.width() as usize * 4)
             .enumerate()
         {
             // SAFETY: all the bounds are good
             let rgb = unsafe {
-                self.buffer.get_unchecked_mut(
+                self.buffer.as_mut().get_unchecked_mut(
                     i * with.width() as usize * 3..(i + 1) * with.width() as usize * 3,
                 )
             };
@@ -236,7 +237,7 @@ impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
     }
 }
 
-impl<T: DerefMut<Target = [u8]>, U: Deref<Target = [u8]>> OverlayAt<Image<U, 4>> for Image<T, 4> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Image<T, 4> {
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {

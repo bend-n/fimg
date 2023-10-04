@@ -2,12 +2,11 @@
 use std::{
     cmp::{max, min},
     f32::consts::TAU,
-    ops::DerefMut,
 };
 
 use crate::Image;
 
-impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draws a filled polygon from a slice of points. Please close your poly. (first == last)
     ///
     /// Borrowed from [imageproc](https://docs.rs/imageproc/latest/src/imageproc/drawing/polygon.rs.html#31), modified for less allocations.

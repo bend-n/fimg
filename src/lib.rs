@@ -233,7 +233,7 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     /// ```
     pub const fn make<'a, const WIDTH: u32, const HEIGHT: u32>() -> Image<&'a [u8], CHANNELS>
     where
-        [(); CHANNELS * WIDTH as usize * HEIGHT as usize]: Sized,
+        [(); CHANNELS * WIDTH as usize * HEIGHT as usize]:,
     {
         Image {
             width: NonZeroU32::new(WIDTH).expect("passed zero width to builder"),
@@ -243,7 +243,40 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     }
 }
 
-impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+#[macro_export]
+/// Create a <code>[Image]<[[u8]; N], C></code> with ease. If your looking for a <code>[Image]<&'static [[u8]]></code>, try [`Image::make`].
+///
+/// ```
+/// let mut i = fimg::make!(4 channels 128 x 128);
+/// ```
+///
+/// Implementation note:
+/// This is doable with a const generic fn, but it returns a `fimg::Image<[u8; fimg::::{impl#7}::array::{constant#1}], _>` which means you cant actually type it, so its useless.
+macro_rules! make {
+    ($channels:literal channels $w:literal x $h: literal) => {
+        unsafe {
+            Image::<_, $channels>::new(
+                match ::core::num::NonZeroU32::new($w) {
+                    Some(n) => n,
+                    None => panic!("width is 0"),
+                },
+                match ::core::num::NonZeroU32::new($h) {
+                    ::core::option::Option::Some(n) => n,
+                    ::core::option::Option::None => panic!("height is 0"),
+                },
+                [0_u8; $channels * $w * $h],
+            )
+        }
+    };
+}
+
+impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+    /// The size of the underlying buffer.
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.buffer.as_ref().len()
+    }
+
     /// # Safety
     ///
     /// the output index is not guranteed to be in bounds
@@ -271,7 +304,7 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
         };
         // SAFETY: 🧐 is unsound? 😖
         let index = unsafe { index.unchecked_mul(CHANNELS) };
-        debug_assert!(self.buffer.len() > index);
+        debug_assert!(self.len() > index);
         index
     }
 
@@ -284,24 +317,24 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
     /// Reference this image.
     pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
         // SAFETY: we got constructed okay, parameters must be valid
-        unsafe { Image::new(self.width, self.height, &*self.buffer) }
+        unsafe { Image::new(self.width, self.height, self.buffer.as_ref()) }
     }
 
     #[inline]
     /// Returns a iterator over every pixel
     pub fn chunked(&self) -> impl DoubleEndedIterator<Item = &[u8; CHANNELS]> {
         // SAFETY: 0 sized images illegal
-        unsafe { assert_unchecked!(self.buffer.len() > CHANNELS) };
+        unsafe { assert_unchecked!(self.len() > CHANNELS) };
         // SAFETY: no half pixels!
-        unsafe { assert_unchecked!(self.buffer.len() % CHANNELS == 0) };
-        self.buffer.array_chunks::<CHANNELS>()
+        unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
+        self.buffer.as_ref().array_chunks::<CHANNELS>()
     }
 
     #[inline]
     /// Flatten the chunks of this image into a slice of slices.
     pub fn flatten(&self) -> &[[u8; CHANNELS]] {
         // SAFETY: buffer cannot have half pixels
-        unsafe { self.buffer.as_chunks_unchecked::<CHANNELS>() }
+        unsafe { self.buffer.as_ref().as_chunks_unchecked::<CHANNELS>() }
     }
 
     /// Return a pixel at (x, y).
@@ -312,13 +345,19 @@ impl<T: std::ops::Deref<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS
     #[inline]
     pub unsafe fn pixel(&self, x: u32, y: u32) -> [u8; CHANNELS] {
         // SAFETY: x and y in bounds, slice is okay
-        let ptr = unsafe { self.buffer.get_unchecked(self.slice(x, y)).as_ptr().cast() };
+        let ptr = unsafe {
+            self.buffer
+                .as_ref()
+                .get_unchecked(self.slice(x, y))
+                .as_ptr()
+                .cast()
+        };
         // SAFETY: slice always returns a length of `CHANNELS`, so we `cast()` it for convenience.
         unsafe { *ptr }
     }
 }
 
-impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Return a mutable reference to a pixel at (x, y).
     /// # Safety
     ///
@@ -329,30 +368,30 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
         // SAFETY: we have been told x, y is in bounds.
         let idx = self.slice(x, y);
         // SAFETY: slice should always return a valid index
-        unsafe { self.buffer.get_unchecked_mut(idx) }
+        unsafe { self.buffer.as_mut().get_unchecked_mut(idx) }
     }
 
     #[inline]
     /// Returns a iterator over every pixel, mutably
     pub fn chunked_mut(&mut self) -> impl Iterator<Item = &mut [u8; CHANNELS]> {
         // SAFETY: 0 sized images are not allowed
-        unsafe { assert_unchecked!(self.buffer.len() > CHANNELS) };
+        unsafe { assert_unchecked!(self.len() > CHANNELS) };
         // SAFETY: buffer cannot have half pixels
-        unsafe { assert_unchecked!(self.buffer.len() % CHANNELS == 0) };
-        self.buffer.array_chunks_mut::<CHANNELS>()
+        unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
+        self.buffer.as_mut().array_chunks_mut::<CHANNELS>()
     }
 
     /// Create a mutref to this image
     pub fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
         // SAFETY: construction went okay
-        unsafe { Image::new(self.width, self.height, &mut self.buffer) }
+        unsafe { Image::new(self.width, self.height, self.buffer.as_mut()) }
     }
 
     #[inline]
     /// Flatten the chunks of this image into a mutable slice of slices.
     pub fn flatten_mut(&mut self) -> &mut [[u8; CHANNELS]] {
         // SAFETY: buffer cannot have half pixels
-        unsafe { self.buffer.as_chunks_unchecked_mut::<CHANNELS>() }
+        unsafe { self.buffer.as_mut().as_chunks_unchecked_mut::<CHANNELS>() }
     }
 
     /// # Safety
@@ -363,13 +402,13 @@ impl<T: std::ops::DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANN
     unsafe fn copy_within(&mut self, src: std::ops::Range<usize>, dest: usize) {
         let std::ops::Range { start, end } = src;
         debug_assert!(
-            dest <= self.buffer.len() - end - start,
+            dest <= self.buffer.as_ref().len() - end - start,
             "dest is out of bounds"
         );
         #[allow(clippy::multiple_unsafe_ops_per_block)]
         // SAFETY: the caller better be good
         unsafe {
-            let ptr = self.buffer.as_mut_ptr();
+            let ptr = self.buffer.as_mut().as_mut_ptr();
             std::ptr::copy_nonoverlapping(ptr.add(start), ptr.add(dest), end - start)
         };
     }
@@ -399,7 +438,7 @@ impl<const CHANNELS: usize> Image<&mut [u8], CHANNELS> {
 }
 
 impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
-    /// Allocates a new image
+    /// Allocates a new image. If `width` and `height` are constant, try using [`make`].
     ///
     /// # Panics
     ///
@@ -417,7 +456,7 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
 /// helper macro for defining the save() method.
 macro_rules! save {
     ($channels:literal == $clr:ident ($clrhuman:literal)) => {
-        impl<T: std::ops::Deref<Target = [u8]>> Image<T, $channels> {
+        impl<T: AsRef<[u8]>> Image<T, $channels> {
             #[cfg(feature = "save")]
             #[doc = "Save this "]
             #[doc = $clrhuman]
@@ -436,7 +475,7 @@ macro_rules! save {
                     (0.15000, 0.06000),
                 ));
                 let mut writer = enc.write_header().unwrap();
-                writer.write_image_data(&self.buffer).unwrap();
+                writer.write_image_data(self.buffer.as_ref()).unwrap();
             }
         }
     };

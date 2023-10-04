@@ -1,7 +1,7 @@
 //! adds a `line` function to Image
 #![allow(clippy::missing_docs_in_private_items)]
 use crate::Image;
-use std::{iter::Iterator, ops::DerefMut};
+use std::iter::Iterator;
 
 /// taken from [bresenham-rs](https://github.com/mbr/bresenham-rs)
 pub struct Bresenham {
@@ -127,7 +127,7 @@ impl Iterator for Bresenham {
     }
 }
 
-impl<T: DerefMut<Target = [u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draw a line from point a to point b.
     ///
     /// Points not in bounds will not be included.

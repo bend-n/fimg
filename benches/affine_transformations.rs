@@ -3,12 +3,13 @@ use fimg::*;
 macro_rules! bench {
     (fn $name: ident() { run $fn: ident() } $($namec:ident)?) => {
         fn $name() {
+            let mut bytes = *include_bytes!("4_128x128.imgbuf");
             let mut img: Image<_, 4> =
-                Image::build(128, 128).buf(include_bytes!("4_128x128.imgbuf").to_vec());
+                Image::build(128, 128).buf(&mut bytes);
             for _ in 0..256 {
                 #[allow(unused_unsafe)]
                 unsafe {
-                    img.$fn()
+                    img.as_mut().$fn()
                 };
             }
         }

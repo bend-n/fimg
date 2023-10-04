@@ -1,6 +1,4 @@
 //! Manages the affine image transformations.
-use std::ops::DerefMut;
-
 use crate::{cloner::ImageCloner, Image};
 
 impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
@@ -45,7 +43,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize, T: DerefMut<Target = [u8]>> Image<T, CHANNELS> {
+impl<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, CHANNELS> {
     /// Flip an image vertically.
     pub fn flip_v(&mut self) {
         for y in 0..self.height() / 2 {
@@ -127,7 +125,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize, T: DerefMut<Target = [u8]>> Image<T, CHANNELS> {
+impl<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, CHANNELS> {
     /// Rotate an image 180 degrees clockwise.
     pub fn rot_180(&mut self) {
         self.flatten_mut().reverse();
@@ -162,7 +160,7 @@ impl<const CHANNELS: usize, T: DerefMut<Target = [u8]>> Image<T, CHANNELS> {
 /// # Safety
 ///
 /// UB if supplied image not square
-unsafe fn crev<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(mut img: Image<T, CHANNELS>) {
+unsafe fn crev<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(mut img: Image<T, CHANNELS>) {
     debug_assert_eq!(img.width(), img.height());
     let size = img.width() as usize;
     let b = img.flatten_mut();
@@ -202,7 +200,7 @@ unsafe fn transpose_out<const CHANNELS: usize>(
 /// # Safety
 ///
 /// UB if supplied image rectangular
-unsafe fn transpose<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(
+unsafe fn transpose<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(
     img: &mut Image<T, CHANNELS>,
 ) {
     debug_assert_eq!(img.width(), img.height());
@@ -220,7 +218,7 @@ unsafe fn transpose<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(
 /// # Safety
 ///
 /// UB if image not square
-unsafe fn transpose_non_power_of_two<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(
+unsafe fn transpose_non_power_of_two<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(
     img: &mut Image<T, CHANNELS>,
 ) {
     debug_assert_eq!(img.width(), img.height());
@@ -239,7 +237,7 @@ const TILE: usize = 4;
 /// # Safety
 ///
 /// be careful
-unsafe fn transpose_tile<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(
+unsafe fn transpose_tile<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(
     img: &mut Image<T, CHANNELS>,
     row: usize,
     col: usize,
@@ -275,7 +273,7 @@ unsafe fn transpose_tile<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(
 /// # Safety
 ///
 /// be careful
-unsafe fn transpose_diag<const CHANNELS: usize, T: DerefMut<Target = [u8]>>(
+unsafe fn transpose_diag<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(
     img: &mut Image<T, CHANNELS>,
     pos: usize,
     size: usize,
