@@ -25,13 +25,13 @@
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]
-
 use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
 pub mod builder;
 pub mod cloner;
 mod drawing;
+pub(crate) mod math;
 mod overlay;
 pub mod scale;
 use cloner::ImageCloner;
@@ -271,10 +271,10 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
 macro_rules! make {
     ($channels:literal channels $w:literal x $h: literal) => {
         unsafe {
-            Image::<_, $channels>::new(
+            $crate::Image::<_, $channels>::new(
                 match ::core::num::NonZeroU32::new($w) {
-                    Some(n) => n,
-                    None => panic!("width is 0"),
+                    ::core::option::Option::Some(n) => n,
+                    ::core::option::Option::None => panic!("width is 0"),
                 },
                 match ::core::num::NonZeroU32::new($h) {
                     ::core::option::Option::Some(n) => n,

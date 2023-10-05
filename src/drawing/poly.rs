@@ -1,8 +1,7 @@
 //! draw polygons
-use std::{
-    cmp::{max, min},
-    f32::consts::TAU,
-};
+use crate::math::madd;
+use std::cmp::{max, min};
+use std::f32::consts::TAU;
 
 use crate::Image;
 
@@ -43,7 +42,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                         }
                     } else {
                         let fraction = (y - p0.1) as f32 / (p1.1 - p0.1) as f32;
-                        let inter = fraction.mul_add((p1.0 - p0.0) as f32, p0.0 as f32);
+                        let inter = madd(fraction, (p1.0 - p0.0) as f32, p0.0 as f32);
                         intersections.push(inter.round() as i32);
                     }
                 }
@@ -113,7 +112,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 self.tri(
                     add(trans(space + rotation)),
                     add(trans(rotation)),
-                    add(trans(space.mul_add(2.0, rotation))),
+                    add(trans(madd(space, 2.0, rotation))),
                     c,
                 );
             }
@@ -122,9 +121,9 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 for i in (0..sides - 1).step_by(2).map(|i| i as f32) {
                     self.quad(
                         r((x, y)),
-                        r(add(trans(space.mul_add(i, rotation)))),
-                        r(add(trans(space.mul_add(i + 1., rotation)))),
-                        r(add(trans(space.mul_add(i + 2., rotation)))),
+                        r(add(trans(madd(space, i, rotation)))),
+                        r(add(trans(madd(space, i + 1., rotation)))),
+                        r(add(trans(madd(space, i + 2., rotation)))),
                         c,
                     );
                 }
@@ -134,8 +133,8 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                     // the missing piece
                     self.tri(
                         (x, y),
-                        add(trans(space.mul_add(i, rotation))),
-                        add(trans(space.mul_add(i + 1., rotation))),
+                        add(trans(madd(space, i, rotation))),
+                        add(trans(madd(space, i + 1., rotation))),
                         c,
                     );
                 }
