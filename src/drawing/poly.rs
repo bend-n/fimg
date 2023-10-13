@@ -1,5 +1,5 @@
 //! draw polygons
-use crate::math::madd;
+use crate::math::{madd, FExt};
 use std::cmp::{max, min};
 use std::f32::consts::TAU;
 
@@ -139,6 +139,40 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                     );
                 }
             }
+        }
+    }
+
+    /// Draw a bordered polygon.
+    /// Prefer [`Image::border_circle`] to draw circles.
+    /// See also [`Image::poly`].
+    /// ```
+    /// let mut i = fimg::Image::alloc(100, 100);
+    /// i.border_poly((50., 50.), 5, 25., 0., 7., [255]);
+    /// # assert_eq!(i.buffer(), include_bytes!("../../tdata/border_pentagon.imgbuf"));
+    /// ```
+    pub fn border_poly(
+        &mut self,
+        (x, y): (f32, f32),
+        sides: usize,
+        radius: f32,
+        rotation: f32,
+        stroke: f32,
+        c: [u8; CHANNELS],
+    ) {
+        let space = TAU / sides as f32;
+        let step = stroke / 2.0 / (space / 2.0).cos();
+        let r1 = radius - step;
+        let r2 = radius + step;
+        let r = |a: f32, b: f32| (a.round() as i32, b.round() as i32);
+        for i in 0..sides {
+            let a = space.madd(i as f32, rotation);
+            self.quad(
+                r(r1.madd(a.cos(), x), r1.madd(a.sin(), y)),
+                r(r1.madd((a + space).cos(), x), r1.madd((a + space).sin(), y)),
+                r(r2.madd((a + space).cos(), x), r2.madd((a + space).sin(), y)),
+                r(r2.madd(a.cos(), x), r2.madd(a.sin(), y)),
+                c,
+            );
         }
     }
 }
