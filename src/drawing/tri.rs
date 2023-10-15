@@ -1,4 +1,6 @@
 //! trongle drawing
+use vecto::Vec2;
+
 use crate::math::madd;
 use crate::Image;
 use std::cmp::{max, min};
@@ -19,11 +21,14 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// ```
     pub fn tri(
         &mut self,
-        (x2, y2): (f32, f32),
-        (x1, y1): (f32, f32),
-        (x3, y3): (f32, f32),
-        c: [u8; CHANNELS],
+        b: impl Into<Vec2>,
+        a: impl Into<Vec2>,
+        c: impl Into<Vec2>,
+        col: [u8; CHANNELS],
     ) {
+        let Vec2 { x: x1, y: y1 } = a.into();
+        let Vec2 { x: x2, y: y2 } = b.into();
+        let Vec2 { x: x3, y: y3 } = c.into();
         let ymin = max(y1.min(y2).min(y3) as u32, 0);
         let ymax = min(y1.max(y2).max(y3) as u32, self.height());
         let xmin = max(x1.min(x2).min(x3) as u32, 0);
@@ -36,7 +41,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                     && madd(x3 - x1, y as f32 - y3, -(y3 - y1) * (x as f32 - x3)) > 0.
                 {
                     // SAFETY: x, y are bounded
-                    unsafe { self.set_pixel(x, y, c) };
+                    unsafe { self.set_pixel(x, y, col) };
                 }
             }
         }

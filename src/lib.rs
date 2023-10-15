@@ -254,6 +254,7 @@ impl<const CHANNELS: usize, const N: usize> Image<[u8; N], CHANNELS> {
 impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     /// Box this image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
+        // SAFETY: ctor
         unsafe { Image::new(self.width, self.height, self.buffer.into()) }
     }
 }

@@ -2,6 +2,7 @@
 use crate::math::{madd, FExt};
 use std::cmp::{max, min};
 use std::f32::consts::TAU;
+use vecto::Vec2;
 
 use crate::Image;
 
@@ -97,22 +98,22 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// ```
     pub fn poly(
         &mut self,
-        (x, y): (f32, f32),
+        pos: impl Into<Vec2>,
         sides: usize,
         radius: f32,
         rotation: f32,
         c: [u8; CHANNELS],
     ) {
-        let trans = |a: f32| (a.cos() * radius, a.sin() * radius);
-        let r = |(a, b): (f32, f32)| (a.round() as i32, b.round() as i32);
-        let add = |(a, b)| (a + x, b + y);
+        let pos = pos.into();
+        let trans = |a: f32| Vec2::from_angle(a) * radius;
+        let r = |v: Vec2| (v.x.round() as i32, v.y.round() as i32);
         match sides {
             3 => {
                 let space = TAU / 3.0;
                 self.tri(
-                    add(trans(space + rotation)),
-                    add(trans(rotation)),
-                    add(trans(madd(space, 2.0, rotation))),
+                    trans(space + rotation) + pos,
+                    trans(rotation) + pos,
+                    trans(madd(space, 2.0, rotation)) + pos,
                     c,
                 );
             }
@@ -120,10 +121,10 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 let space = TAU / sides as f32;
                 for i in (0..sides - 1).step_by(2).map(|i| i as f32) {
                     self.quad(
-                        r((x, y)),
-                        r(add(trans(madd(space, i, rotation)))),
-                        r(add(trans(madd(space, i + 1., rotation)))),
-                        r(add(trans(madd(space, i + 2., rotation)))),
+                        r(pos),
+                        r(trans(madd(space, i, rotation)) + pos),
+                        r(trans(madd(space, i + 1., rotation)) + pos),
+                        r(trans(madd(space, i + 2., rotation)) + pos),
                         c,
                     );
                 }
@@ -132,9 +133,9 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                     let i = (sides - 1) as f32;
                     // the missing piece
                     self.tri(
-                        (x, y),
-                        add(trans(madd(space, i, rotation))),
-                        add(trans(madd(space, i + 1., rotation))),
+                        pos,
+                        trans(madd(space, i, rotation)) + pos,
+                        trans(madd(space, i + 1., rotation)) + pos,
                         c,
                     );
                 }
@@ -152,13 +153,14 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// ```
     pub fn border_poly(
         &mut self,
-        (x, y): (f32, f32),
+        pos: impl Into<Vec2>,
         sides: usize,
         radius: f32,
         rotation: f32,
         stroke: f32,
         c: [u8; CHANNELS],
     ) {
+        let pos = pos.into();
         let space = TAU / sides as f32;
         let step = stroke / 2.0 / (space / 2.0).cos();
         let r1 = radius - step;
@@ -167,10 +169,16 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         for i in 0..sides {
             let a = space.madd(i as f32, rotation);
             self.quad(
-                r(r1.madd(a.cos(), x), r1.madd(a.sin(), y)),
-                r(r1.madd((a + space).cos(), x), r1.madd((a + space).sin(), y)),
-                r(r2.madd((a + space).cos(), x), r2.madd((a + space).sin(), y)),
-                r(r2.madd(a.cos(), x), r2.madd(a.sin(), y)),
+                r(r1.madd(a.cos(), pos.x), r1.madd(a.sin(), pos.y)),
+                r(
+                    r1.madd((a + space).cos(), pos.x),
+                    r1.madd((a + space).sin(), pos.y),
+                ),
+                r(
+                    r2.madd((a + space).cos(), pos.x),
+                    r2.madd((a + space).sin(), pos.y),
+                ),
+                r(r2.madd(a.cos(), pos.x), r2.madd(a.sin(), pos.y)),
                 c,
             );
         }

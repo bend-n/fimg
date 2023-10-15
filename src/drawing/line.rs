@@ -2,6 +2,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 use crate::Image;
 use std::iter::Iterator;
+use vecto::Vec2;
 
 /// taken from [bresenham-rs](https://github.com/mbr/bresenham-rs)
 pub struct Bresenham {
@@ -156,20 +157,18 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// ```
     pub fn thick_line(
         &mut self,
-        (x1, y1): (f32, f32),
-        (x2, y2): (f32, f32),
+        a: impl Into<Vec2>,
+        b: impl Into<Vec2>,
         stroke: f32,
         color: [u8; CHANNELS],
     ) {
-        let (wx, wy) = {
-            let (x, y) = (y1 - y2, -(x1 - x2));
-            let l = (x * x + y * y).sqrt();
-            ((x / l) * (stroke / 2.0), (y / l) * (stroke / 2.0))
-        };
+        let a = a.into();
+        let b = b.into();
+        let w = (a - b).orthogonal().normalized() * (stroke / 2.0);
         macro_rules! p {
-            ($x:expr,$y:expr) => {
+            ($x:expr) => {
                 #[allow(clippy::cast_possible_truncation)]
-                ($x.round() as i32, $y.round() as i32)
+                ($x.x.round() as i32, $x.y.round() as i32)
             };
         }
         // order:
@@ -177,10 +176,10 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         // [    ]
         // ^ x3 ^ x4
         self.quad(
-            p!(x1 - wx, y1 - wy), // x1
-            p!(x2 - wx, y2 - wy), // x2
-            p!(x2 + wx, y2 + wy), // x3
-            p!(x1 + wx, y1 + wy), // x4
+            p!(a - w), // x1
+            p!(b - w), // x2
+            p!(b + w), // x3
+            p!(a + w), // x4
             color,
         );
     }

@@ -11,6 +11,7 @@ exclude = ["tdata", "benches/", ".gitignore"]
 [dependencies]
 mattr = "0.0.2"
 png = { version = "0.17", features = ["unstable"], optional = true }
+vecto = "0.1.0"
 
 [dev-dependencies]
 iai = { version = "0.1.1", features = [
