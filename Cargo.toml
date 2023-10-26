@@ -11,11 +11,12 @@ exclude = ["tdata", "benches/", ".gitignore"]
 [dependencies]
 mattr = "0.0.2"
 png = { version = "0.17", features = ["unstable"], optional = true }
+fontdue = { version = "0.7.3", optional = true }
 vecto = "0.1.0"
+umath = "0.0.7"
 
 [dev-dependencies]
-iai = { version = "0.1.1", features = [
-], git = "https://github.com/bend-n/iai/" }
+iai = { path = "../iai" }
 
 [[bench]]
 name = "overlays"
@@ -39,7 +40,8 @@ harness = false
 
 [features]
 save = ["png"]
-default = ["save"]
+text = ["fontdue"]
+default = ["save", "text"]
 
 [profile.release]
 debug = 2

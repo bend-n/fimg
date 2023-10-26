@@ -16,3 +16,4 @@ quick simple image operations
 - [x] thick line drawing
 - [x] polygon drawing
 - [x] circle drawing
+- [x] text drawing
