@@ -41,7 +41,7 @@ harness = false
 [features]
 save = ["png"]
 text = ["fontdue"]
-default = ["save", "text"]
+default = ["save"]
 
 [profile.release]
 debug = 2
