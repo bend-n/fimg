@@ -98,4 +98,14 @@ mod buf {
             N
         }
     }
+    impl<T, const N: usize> Buffer for Box<[T; N]> {
+        fn len(&self) -> usize {
+            N
+        }
+    }
+    impl<T> Buffer for Box<[T]> {
+        fn len(&self) -> usize {
+            <[T]>::len(self)
+        }
+    }
 }
