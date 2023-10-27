@@ -475,6 +475,22 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
             buffer: vec![0; CHANNELS * width as usize * height as usize],
         }
     }
+
+    /// Consumes and leaks this image, returning a reference to the image.
+    #[must_use = "not using the returned reference is a memory leak"]
+    pub fn leak(self) -> Image<&'static mut [u8], CHANNELS> {
+        // SAFETY: ctor
+        unsafe { Image::new(self.width, self.height, self.buffer.leak()) }
+    }
+}
+
+impl<const CHANNELS: usize, T: ?Sized> Image<Box<T>, CHANNELS> {
+    /// Consumes and leaks this image, returning a reference to the image.
+    #[must_use = "not using the returned reference is a memory leak"]
+    pub fn leak(self) -> Image<&'static mut T, CHANNELS> {
+        // SAFETY: ctor
+        unsafe { Image::new(self.width, self.height, Box::leak(self.buffer)) }
+    }
 }
 
 /// helper macro for defining the save() method.
