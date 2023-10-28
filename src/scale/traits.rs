@@ -49,6 +49,8 @@ pub trait AlphaDiv<const N: usize>: Sealed + ToImageView<N> {
     type P: fr::PixelExt + fr::Convolution + fr::AlphaMulDiv;
     #[doc(hidden)]
     fn handle(i: Image<&mut [u8], N>) -> fr::Image<'_, <Self as AlphaDiv<N>>::P>;
+    #[doc(hidden)]
+    fn unhandle(i: &mut fr::Image<<Self as AlphaDiv<N>>::P>);
 }
 
 /// Generic helper for [`Image`] and [`fr::Image`] transfers.
@@ -82,6 +84,11 @@ macro_rules! adiv {
                 unsafe { fr::MulDiv::default().multiply_alpha_inplace(&mut i.view_mut()) };
 
                 i
+            }
+
+            fn unhandle(i: &mut fr::Image<<Self as AlphaDiv<$n>>::P>) {
+                // SAFETY: mhm
+                unsafe { fr::MulDiv::default().divide_alpha_inplace(&mut i.view_mut()) }
             }
         }
     };

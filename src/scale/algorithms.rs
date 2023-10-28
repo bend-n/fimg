@@ -75,6 +75,8 @@ macro_rules! alg {
                         .resize(&ChannelCount::<N>::handle(i).view(), &mut dst.view_mut())
                 }
 
+                ChannelCount::<N>::unhandle(&mut dst);
+
                 // SAFETY: ctor
                 unsafe { Image::new(dst.width(), dst.height(), dst.into_vec().into()) }
             }
