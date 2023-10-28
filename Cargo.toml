@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.19"
+version = "0.4.20"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -14,9 +14,10 @@ png = { version = "0.17", features = ["unstable"], optional = true }
 fontdue = { version = "0.7.3", optional = true }
 vecto = "0.1.0"
 umath = "0.0.7"
+fr = { version = "0.1.1", package = "fer", optional = true }
 
 [dev-dependencies]
-iai = { path = "../iai" }
+iai = { git = "https://github.com/bend-n/iai.git" }
 
 [[bench]]
 name = "overlays"
@@ -34,14 +35,20 @@ path = "benches/affine_transformations.rs"
 harness = false
 
 [[bench]]
+name = "scaling"
+path = "benches/scaling.rs"
+harness = false
+
+[[bench]]
 name = "tile"
 path = "benches/tile.rs"
 harness = false
 
 [features]
+scale = ["fr"]
 save = ["png"]
 text = ["fontdue"]
-default = ["save"]
+default = ["save", "scale"]
 
 [profile.release]
 debug = 2

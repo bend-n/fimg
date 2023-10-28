@@ -14,8 +14,6 @@
     array_chunks
 )]
 #![warn(
-    clippy::missing_docs_in_private_items,
-    clippy::multiple_unsafe_ops_per_block,
     clippy::undocumented_unsafe_blocks,
     clippy::missing_const_for_fn,
     clippy::missing_safety_doc,
@@ -34,6 +32,7 @@ pub mod cloner;
 mod drawing;
 pub(crate) mod math;
 mod overlay;
+#[cfg(feature = "scale")]
 pub mod scale;
 use cloner::ImageCloner;
 pub use overlay::{ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};

@@ -8,7 +8,7 @@ quick simple image operations
 - [x] rotation
 - [x] flipping
 - [x] image tiling
-- [x] nearest neighbor scaling
+- [x] image scaling
 - [x] triangle drawing
 - [x] simple line drawing
 - [x] box drawing
