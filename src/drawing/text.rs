@@ -10,7 +10,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, 4> {
     /// ```
     /// # use fimg::Image;
     /// let font = fontdue::Font::from_bytes(
-    /// &include_bytes!("../../tdata/CascadiaCode.ttf")[..],
+    /// 	&include_bytes!("../../tdata/CascadiaCode.ttf")[..],
     /// 	fontdue::FontSettings {
     /// 		scale: 200.0,
     /// 		..Default::default()
@@ -18,7 +18,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, 4> {
     /// ).unwrap();
     /// let mut i: Image<_, 4> = Image::alloc(750, 250).boxed();
     /// i.text(50, 10, 200.0, &font, "hello", [0, 0, 0, 255]);
-    /// assert_eq!(i.buffer(), include_bytes!("../../tdata/text.imgbuf"));
+    /// # assert_eq!(i.buffer(), include_bytes!("../../tdata/text.imgbuf"));
     /// ```
     pub fn text(&mut self, x: u32, y: u32, size: f32, font: &Font, text: &str, color: [u8; 4]) {
         let mut lay =

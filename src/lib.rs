@@ -9,6 +9,7 @@
     slice_flatten,
     portable_simd,
     array_windows,
+    doc_auto_cfg,
     const_option,
     array_chunks
 )]
