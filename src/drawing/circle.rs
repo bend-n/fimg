@@ -1,7 +1,6 @@
 //! draw 2d circles
 use crate::Image;
 
-
 impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draws a circle, using the [Bresenham's circle](https://en.wikipedia.org/wiki/Midpoint_circle_algorithm) algorithm.
     /// ```

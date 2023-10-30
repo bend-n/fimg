@@ -111,32 +111,3 @@ alg!(Hamming);
 /// [Mitchell–Netravali](https://en.wikipedia.org/wiki/Mitchell%E2%80%93Netravali_filters) bicubic filtering.
 pub struct Mitchell {}
 alg!(Mitchell);
-
-impl Nearest {
-    /// Resize a image.
-    /// # Safety
-    ///
-    /// `image` must be as big or bigger than `width`, `height.
-    #[must_use = "function does not modify the original image"]
-    #[deprecated = "use Image::scale instead (note that Image::scale does not support any N. if there is a N you would like to see supported, please open a issue)"]
-    pub unsafe fn scale<const N: usize>(
-        image: Image<&[u8], N>,
-        width: u32,
-        height: u32,
-    ) -> Image<Vec<u8>, N> {
-        let x_scale = image.width() as f32 / width as f32;
-        let y_scale = image.height() as f32 / height as f32;
-        let mut out = Image::alloc(width, height);
-        for y in 0..height {
-            for x in 0..width {
-                let x1 = ((x as f32 + 0.5) * x_scale).floor() as u32;
-                let y1 = ((y as f32 + 0.5) * y_scale).floor() as u32;
-                // SAFETY: i asked the caller to make sure its ok
-                let px = unsafe { image.pixel(x1, y1) };
-                // SAFETY: were looping over the width and height of out. its ok.
-                unsafe { out.set_pixel(x, y, px) };
-            }
-        }
-        out
-    }
-}

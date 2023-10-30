@@ -32,6 +32,7 @@ pub mod cloner;
 mod drawing;
 pub(crate) mod math;
 mod overlay;
+pub mod pixels;
 #[cfg(feature = "scale")]
 pub mod scale;
 use cloner::ImageCloner;
