@@ -526,9 +526,18 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     #[cfg(feature = "save")]
     /// Open a PNG image
     pub fn open(f: impl AsRef<std::path::Path>) -> Self {
+        use png::Transformations as T;
         let p = std::fs::File::open(f).unwrap();
         let r = std::io::BufReader::new(p);
-        let dec = png::Decoder::new(r);
+        let mut dec = png::Decoder::new(r);
+        match CHANNELS {
+            1 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
+            2 => dec.set_transformations(T::STRIP_16 | T::ALPHA),
+            3 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
+            4 => dec.set_transformations(T::STRIP_16 | T::ALPHA),
+            _ => (),
+        }
+        dec.set_transformations(png::Transformations::EXPAND);
         let mut reader = dec.read_info().unwrap();
         let mut buf = vec![0; reader.output_buffer_size()];
         let info = reader.next_frame(&mut buf).unwrap();
