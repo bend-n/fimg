@@ -10,10 +10,8 @@ quick simple image operations
 - [x] image tiling
 - [x] image scaling
 - [x] triangle drawing
-- [x] simple line drawing
+- [x] line drawing
 - [x] box drawing
-- [x] thick box drawing
-- [x] thick line drawing
 - [x] polygon drawing
 - [x] circle drawing
 - [x] text drawing

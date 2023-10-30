@@ -1,7 +1,9 @@
 //! Handles image overlay
+// TODO Y/YA
 use crate::cloner::ImageCloner;
 
 use super::{assert_unchecked, Image};
+use crate::pixels::Blend;
 use std::simd::{simd_swizzle, Simd, SimdInt, SimdPartialOrd};
 
 /// Trait for layering a image ontop of another, with a offset to the second image.
@@ -34,10 +36,21 @@ pub trait ClonerOverlayAt<const W: usize, const C: usize>: Sealed {
 /// Think `magick a b -layers flatten a`
 pub trait Overlay<W> {
     /// Overlay with => self (does not blend)
+    ///
     /// # Safety
     ///
     /// UB if a.width != b.width || a.height != b.height
     unsafe fn overlay(&mut self, with: &W) -> &mut Self;
+}
+
+/// This blends the images together, like [`imageops::overlay`](https://docs.rs/image/latest/image/imageops/fn.overlay.html).
+pub trait BlendingOverlay<W> {
+    /// Overlay with => self, blending. You probably do not need this, unless your images make much usage of alpha.
+    /// If you only have 2 alpha states, `0` | `255` (transparent | opaque), please use [`Overlay`], as it is much faster.
+    /// # Safety
+    ///
+    /// UB if a.width != b.width || a.height != b.height
+    unsafe fn overlay_blended(&mut self, with: &W) -> &mut Self;
 }
 
 /// [`Overlay`] but owned
@@ -111,6 +124,26 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Imag
                     unsafe { self.buffer.as_mut().get_unchecked_mut(i * 4..i * 4 + 4) };
                 own_pixels.copy_from_slice(other_pixels);
             }
+        }
+        self
+    }
+}
+
+impl BlendingOverlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
+    #[inline]
+    unsafe fn overlay_blended(&mut self, with: &Image<&[u8], 4>) -> &mut Self {
+        debug_assert!(self.width() == with.width());
+        debug_assert!(self.height() == with.height());
+        for (i, other_pixels) in with.chunked().enumerate() {
+            // SAFETY: caller assures us, all is well.
+            let own_pixels = unsafe {
+                &mut *(self
+                    .buffer
+                    .as_mut()
+                    .get_unchecked_mut(i * 4..i * 4 + 4)
+                    .as_mut_ptr() as *mut [u8; 4])
+            };
+            own_pixels.blend(*other_pixels);
         }
         self
     }
@@ -221,6 +254,28 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Imag
             };
             // SAFETY: we have the rgb and rgba arguments right
             unsafe { blit(rgb, chunk) };
+        }
+        self
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> BlendingOverlay<Image<U, 4>> for Image<T, 3> {
+    #[inline]
+    unsafe fn overlay_blended(&mut self, with: &Image<U, 4>) -> &mut Self {
+        debug_assert!(self.width() == with.width());
+        debug_assert!(self.height() == with.height());
+        for (i, other_pixels) in with.chunked().enumerate() {
+            // SAFETY: caller assures us, all is well.
+            let [r, g, b] = unsafe {
+                &mut *(self
+                    .buffer
+                    .as_mut()
+                    .get_unchecked_mut(i * 3..i * 3 + 3)
+                    .as_mut_ptr() as *mut [u8; 3])
+            };
+            let mut us = [*r, *g, *b, 255];
+            us.blend(*other_pixels);
+            (*r, *g, *b) = (us[0], us[1], us[2]);
         }
         self
     }
