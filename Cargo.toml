@@ -7,6 +7,8 @@ edition = "2021"
 description = "fast image operations"
 repository = "https://github.com/bend-n/fimg"
 exclude = ["tdata", "benches/", ".gitignore"]
+keywords = ["image", "affine", "scale", "drawing"]
+categories = ["multimedia::images", "graphics"]
 
 [dependencies]
 mattr = "0.0.2"
