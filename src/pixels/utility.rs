@@ -53,7 +53,7 @@ impl<const N: usize, T: Copy, R: Copy> PMap<T, R, N> for [T; N] {
 }
 
 pub trait Trunc<T, const N: usize> {
-    /// it does `a[..a.len() - 1].try_into().unwrap()``.
+    /// it does `a[..a.len() - 1].try_into().unwrap()`.
     fn trunc(&self) -> [T; N - 1];
 }
 
@@ -63,10 +63,27 @@ impl<const N: usize, T: Copy> Trunc<T, N> for [T; N] {
     }
 }
 
+pub trait Push<T, const N: usize> {
+    fn and(self, and: T) -> [T; N + 1];
+}
+
+impl<const N: usize, T> Push<T, N> for [T; N] {
+    fn and(self, and: T) -> [T; N + 1] {
+        let mut iter = self.into_iter().chain(std::iter::once(and));
+        std::array::from_fn(|_| iter.next().unwrap())
+    }
+}
+
 #[test]
 fn trunc() {
     let x = [1];
     assert_eq!(x.trunc(), []);
     let x = [1, 2, 3, 4];
     assert_eq!(x.trunc(), [1, 2, 3]);
+}
+
+#[test]
+fn append() {
+    let x = [1];
+    assert_eq!(x.and(5), [1, 5]);
 }

@@ -1,6 +1,39 @@
 //! # fimg
 //!
 //! Provides fast image operations, such as rotation, flipping, and overlaying.
+//!
+//! ## Organization
+//!
+//! Image types:
+//!
+//! - [`Image`]: the main image type.
+//! - [`DynImage`]: This is the image type you use when, say, loading a png. You should immediately convert this into a
+//! - [`ImageCloner`]: this is... a [`Image`], but about to be cloned. It just allows some simple out-of-place optimizations, that `.clone().op()` dont  allow. (produce with [`Image::cloner`])
+//!
+//! ### Operations
+//!
+//! Affine:
+//! - [`Image::rot_90`]
+//! - [`Image::rot_180`]
+//! - [`Image::rot_270`]
+//! - [`Image::flip_h`]
+//! - [`Image::flip_v`]
+//!
+//! Drawing:
+//! - [`Image::box`], [`Image::filled_box`], [`Image::stroked_box`]
+//! - [`Image::circle`], [`Image::border_circle`]
+//! - [`Image::line`], [`Image::thick_line`]
+//! - [`Image::points`]
+//! - [`Image::quad`]
+//! - [`Image::poly`], [`Image::border_poly`]
+//! - [`Image::tri`]
+//! - [`Image::text`]
+//!
+//! Scaling: [`Image::scale`]
+//!
+//! Misc image ops:
+//! - [`Image::repeated`]
+//! - [`Image::overlay`](Overlay), [`Image::overlay_at`](OverlayAt), [`Image::overlay_blended`](BlendingOverlay)
 #![feature(
     slice_swap_unchecked,
     generic_const_exprs,
@@ -27,16 +60,21 @@
 use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
+#[doc(hidden)]
 pub mod builder;
+#[doc(hidden)]
 pub mod cloner;
+mod convert;
 mod drawing;
+mod r#dyn;
 pub(crate) mod math;
 mod overlay;
 pub mod pixels;
 #[cfg(feature = "scale")]
 pub mod scale;
-use cloner::ImageCloner;
+pub use cloner::ImageCloner;
 pub use overlay::{BlendingOverlay, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};
+pub use r#dyn::DynImage;
 
 /// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
 ///
@@ -145,14 +183,14 @@ impl<T: Clone, const CHANNELS: usize> Clone for Image<T, CHANNELS> {
 impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     #[inline]
     /// get the height as a [`u32`]
-    pub fn height(&self) -> u32 {
-        self.height.into()
+    pub const fn height(&self) -> u32 {
+        self.height.get()
     }
 
     #[inline]
     /// get the width as a [`u32`]
-    pub fn width(&self) -> u32 {
-        self.width.into()
+    pub const fn width(&self) -> u32 {
+        self.width.get()
     }
 
     #[inline]
@@ -299,7 +337,12 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// The size of the underlying buffer.
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
-        self.buffer.as_ref().len()
+        self.bytes().len()
+    }
+
+    /// Bytes of this image.
+    pub fn bytes(&self) -> &[u8] {
+        self.buffer.as_ref()
     }
 
     /// # Safety
@@ -342,7 +385,7 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Reference this image.
     pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
         // SAFETY: we got constructed okay, parameters must be valid
-        unsafe { Image::new(self.width, self.height, self.buffer.as_ref()) }
+        unsafe { Image::new(self.width, self.height, self.bytes()) }
     }
 
     #[inline]
@@ -352,14 +395,14 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         unsafe { assert_unchecked!(self.len() > CHANNELS) };
         // SAFETY: no half pixels!
         unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
-        self.buffer.as_ref().array_chunks::<CHANNELS>()
+        self.bytes().array_chunks::<CHANNELS>()
     }
 
     #[inline]
     /// Flatten the chunks of this image into a slice of slices.
     pub fn flatten(&self) -> &[[u8; CHANNELS]] {
         // SAFETY: buffer cannot have half pixels
-        unsafe { self.buffer.as_ref().as_chunks_unchecked::<CHANNELS>() }
+        unsafe { self.bytes().as_chunks_unchecked::<CHANNELS>() }
     }
 
     /// Return a pixel at (x, y).
@@ -427,7 +470,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     unsafe fn copy_within(&mut self, src: std::ops::Range<usize>, dest: usize) {
         let std::ops::Range { start, end } = src;
         debug_assert!(
-            dest <= self.buffer.as_ref().len() - end - start,
+            dest <= self.bytes().len() - end - start,
             "dest is out of bounds"
         );
         #[allow(clippy::multiple_unsafe_ops_per_block)]
@@ -516,7 +559,7 @@ macro_rules! save {
                     (0.15000, 0.06000),
                 ));
                 let mut writer = enc.write_header().unwrap();
-                writer.write_image_data(self.buffer.as_ref()).unwrap();
+                writer.write_image_data(self.bytes()).unwrap();
             }
         }
     };
@@ -531,13 +574,10 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
         let r = std::io::BufReader::new(p);
         let mut dec = png::Decoder::new(r);
         match CHANNELS {
-            1 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
-            2 => dec.set_transformations(T::STRIP_16 | T::ALPHA),
-            3 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
-            4 => dec.set_transformations(T::STRIP_16 | T::ALPHA),
+            1 | 3 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
+            2 | 4 => dec.set_transformations(T::STRIP_16 | T::ALPHA),
             _ => (),
         }
-        dec.set_transformations(png::Transformations::EXPAND);
         let mut reader = dec.read_info().unwrap();
         let mut buf = vec![0; reader.output_buffer_size()];
         let info = reader.next_frame(&mut buf).unwrap();

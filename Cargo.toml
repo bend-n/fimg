@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.21"
+version = "0.4.22"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"

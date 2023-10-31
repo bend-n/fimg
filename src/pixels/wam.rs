@@ -7,7 +7,7 @@ pub trait Wam {
     ///
     /// # Safety
     ///
-    /// pls make l = 0..=f32::MAX/2, r = 0..=f32::MAX/2
+    /// pls make l = <code>0..=[f32::MAX]/2</code>, r = <code>0..=[f32::MAX]/2</code>
     unsafe fn wam(self, b: Self, l: FF32, r: FF32) -> Self;
 }
 
