@@ -14,7 +14,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// # use fimg::Image;
     /// let mut i = Image::alloc(10, 10);
     /// i.points(&[(1, 8), (3, 1), (8, 1), (6, 6), (8, 8), (1, 8)], [255]);
-    /// # assert_eq!(i.buffer(), b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    /// # assert_eq!(i.buffer(), b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
     /// ```
     pub fn points(&mut self, poly: &[(i32, i32)], c: [u8; CHANNELS]) {
         if poly.len() <= 1 {
@@ -110,7 +110,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         match sides {
             3 => {
                 let space = TAU / 3.0;
-                self.tri(
+                self.tri::<f32>(
                     trans(space + rotation) + pos,
                     trans(rotation) + pos,
                     trans(madd(space, 2.0, rotation)) + pos,
@@ -132,7 +132,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 if sides % 2 != 0 && sides > 4 {
                     let i = (sides - 1) as f32;
                     // the missing piece
-                    self.tri(
+                    self.tri::<f32>(
                         pos,
                         trans(madd(space, i, rotation)) + pos,
                         trans(madd(space, i + 1., rotation)) + pos,

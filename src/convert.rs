@@ -64,12 +64,12 @@ boxconv!(4 => 2);
 boxconv!(4 => 3);
 
 #[inline]
-fn pack([r, g, b, a]: [u8; 4]) -> u32 {
+const fn pack([r, g, b, a]: [u8; 4]) -> u32 {
     ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
 }
 
 #[inline]
-fn unpack(n: u32) -> [u8; 4] {
+const fn unpack(n: u32) -> [u8; 4] {
     [
         ((n >> 16) & 0xFF) as u8,
         ((n >> 8) & 0xFF) as u8,
