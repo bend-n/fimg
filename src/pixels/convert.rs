@@ -24,7 +24,7 @@ impl PFrom<2> for Y {
 
 impl PFrom<3> for Y {
     fn pfrom([r, g, b]: RGB) -> Self {
-        [((2126 * r as u16 + 7152 * g as u16 + 722 * b as u16) / 10000) as u8]
+        [((2126 * r as u32 + 7152 * g as u32 + 722 * b as u32) / 10000) as u8]
     }
 }
 

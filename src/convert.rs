@@ -62,3 +62,57 @@ boxconv!(3 => 4);
 boxconv!(4 => 1);
 boxconv!(4 => 2);
 boxconv!(4 => 3);
+
+#[inline]
+fn pack([r, g, b, a]: [u8; 4]) -> u32 {
+    ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
+}
+
+#[inline]
+fn unpack(n: u32) -> [u8; 4] {
+    [
+        ((n >> 16) & 0xFF) as u8,
+        ((n >> 8) & 0xFF) as u8,
+        (n & 0xFF) as u8,
+        ((n >> 24) & 0xFF) as u8,
+    ]
+}
+
+impl<const N: usize> From<Image<&[u8], N>> for Image<Box<[u32]>, 1>
+where
+    [u8; 4]: PFrom<N>,
+{
+    /// Pack into ARGB.
+    fn from(value: Image<&[u8], N>) -> Self {
+        let buf = value
+            .chunked()
+            .copied()
+            .map(PFrom::pfrom)
+            .map(pack)
+            .collect();
+        // SAFETY: ctor
+        unsafe { Self::new(value.width, value.height, buf) }
+    }
+}
+
+pub fn unpack_all<const N: usize>(buffer: &[u32]) -> impl Iterator<Item = u8> + '_
+where
+    [u8; N]: PFrom<4>,
+{
+    buffer
+        .iter()
+        .copied()
+        .map(unpack)
+        .flat_map(<[u8; N] as PFrom<4>>::pfrom)
+}
+
+impl<const N: usize> From<Image<&[u32], 1>> for Image<Box<[u8]>, N>
+where
+    [u8; N]: PFrom<4>,
+{
+    fn from(value: Image<&[u32], 1>) -> Self {
+        let buf = unpack_all(value.buffer).collect();
+        // SAFETY: ctor
+        unsafe { Self::new(value.width, value.height, buf) }
+    }
+}

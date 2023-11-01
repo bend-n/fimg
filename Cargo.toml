@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.22"
+version = "0.4.23"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -17,6 +17,7 @@ fontdue = { version = "0.7.3", optional = true }
 vecto = "0.1.0"
 umath = "0.0.7"
 fr = { version = "0.1.1", package = "fer", optional = true }
+stackblur-iter = { version = "0.2.0", features = ["simd"], optional = true }
 
 [dev-dependencies]
 iai = { git = "https://github.com/bend-n/iai.git" }
@@ -50,6 +51,7 @@ harness = false
 scale = ["fr"]
 save = ["png"]
 text = ["fontdue"]
+blur = ["stackblur-iter"]
 default = ["save", "scale"]
 
 [profile.release]

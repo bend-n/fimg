@@ -15,3 +15,4 @@ quick simple image operations
 - [x] polygon drawing
 - [x] circle drawing
 - [x] text drawing
+- [x] blur

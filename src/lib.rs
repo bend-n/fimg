@@ -34,6 +34,7 @@
 //! Misc image ops:
 //! - [`Image::repeated`]
 //! - [`Image::overlay`](Overlay), [`Image::overlay_at`](OverlayAt), [`Image::overlay_blended`](BlendingOverlay)
+//! - [`Image::blur`]
 #![feature(
     slice_swap_unchecked,
     generic_const_exprs,
@@ -60,6 +61,8 @@
 use std::{num::NonZeroU32, slice::SliceIndex};
 
 mod affine;
+#[cfg(feature = "blur")]
+mod blur;
 #[doc(hidden)]
 pub mod builder;
 #[doc(hidden)]
