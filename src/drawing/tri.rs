@@ -21,14 +21,25 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// ```
     pub fn tri<F: Float<f32>>(
         &mut self,
-        b: impl Into<Vector2<F>>,
         a: impl Into<Vector2<F>>,
+        b: impl Into<Vector2<F>>,
         c: impl Into<Vector2<F>>,
         col: [u8; CHANNELS],
     ) {
-        let Vector2 { x: x1, y: y1 } = a.into();
-        let Vector2 { x: x2, y: y2 } = b.into();
+        let Vector2 {
+            x: mut x1,
+            y: mut y1,
+        } = a.into();
+        let Vector2 {
+            x: mut x2,
+            y: mut y2,
+        } = b.into();
         let Vector2 { x: x3, y: y3 } = c.into();
+        // fix winding
+        if (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1) > 0.0 {
+            std::mem::swap(&mut x1, &mut x2);
+            std::mem::swap(&mut y1, &mut y2);
+        }
         let ymin = max(y1.min(y2).min(y3).take() as u32, 0);
         let ymax = min(y1.max(y2).max(y3).take() as u32, self.height());
         let xmin = max(x1.min(x2).min(x3).take() as u32, 0);
