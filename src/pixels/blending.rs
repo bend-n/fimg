@@ -1,5 +1,5 @@
 //! module for pixel blending ops
-use super::{unfloat, Floatify, PMap, Trunc, Unfloatify};
+use super::{convert::PFrom, unfloat, Floatify, PMap, Trunc, Unfloatify};
 use umath::FF32;
 
 /// Trait for blending pixels together.
@@ -38,6 +38,14 @@ impl Blend<4> for [u8; 4] {
 impl Blend<3> for [u8; 3] {
     fn blend(&mut self, with: [u8; 3]) {
         *self = with;
+    }
+}
+
+impl Blend<4> for [u8; 3] {
+    fn blend(&mut self, with: [u8; 4]) {
+        let mut us: [u8; 4] = PFrom::pfrom(*self);
+        us.blend(with);
+        *self = PFrom::pfrom(us);
     }
 }
 

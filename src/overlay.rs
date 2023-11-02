@@ -129,20 +129,16 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Imag
     }
 }
 
-impl BlendingOverlay<Image<&[u8], 4>> for Image<&mut [u8], 4> {
+impl<const A: usize, const B: usize, T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>>
+    BlendingOverlay<Image<U, B>> for Image<T, A>
+where
+    [u8; A]: Blend<B>,
+{
     #[inline]
-    unsafe fn overlay_blended(&mut self, with: &Image<&[u8], 4>) -> &mut Self {
+    unsafe fn overlay_blended(&mut self, with: &Image<U, B>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
-        for (i, other_pixels) in with.chunked().enumerate() {
-            // SAFETY: caller assures us, all is well.
-            let own_pixels = unsafe {
-                &mut *(self
-                    .buffer
-                    .as_mut()
-                    .get_unchecked_mut(i * 4..i * 4 + 4)
-                    .as_mut_ptr() as *mut [u8; 4])
-            };
+        for (other_pixels, own_pixels) in with.chunked().zip(self.chunked_mut()) {
             own_pixels.blend(*other_pixels);
         }
         self
@@ -254,28 +250,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Imag
             };
             // SAFETY: we have the rgb and rgba arguments right
             unsafe { blit(rgb, chunk) };
-        }
-        self
-    }
-}
-
-impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> BlendingOverlay<Image<U, 4>> for Image<T, 3> {
-    #[inline]
-    unsafe fn overlay_blended(&mut self, with: &Image<U, 4>) -> &mut Self {
-        debug_assert!(self.width() == with.width());
-        debug_assert!(self.height() == with.height());
-        for (i, other_pixels) in with.chunked().enumerate() {
-            // SAFETY: caller assures us, all is well.
-            let [r, g, b] = unsafe {
-                &mut *(self
-                    .buffer
-                    .as_mut()
-                    .get_unchecked_mut(i * 3..i * 3 + 3)
-                    .as_mut_ptr() as *mut [u8; 3])
-            };
-            let mut us = [*r, *g, *b, 255];
-            us.blend(*other_pixels);
-            (*r, *g, *b) = (us[0], us[1], us[2]);
         }
         self
     }
