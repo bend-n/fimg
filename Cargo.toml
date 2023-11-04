@@ -19,6 +19,10 @@ umath = "0.0.7"
 fr = { version = "0.1.1", package = "fer", optional = true }
 stackblur-iter = { version = "0.2.0", features = ["simd"], optional = true }
 clipline = "0.1.1"
+minifb = { version = "0.25.0", default-features = false, features = [
+    "x11",
+    "wayland",
+], optional = true }
 
 [dev-dependencies]
 iai = { git = "https://github.com/bend-n/iai.git" }
@@ -53,6 +57,7 @@ scale = ["fr"]
 save = ["png"]
 text = ["fontdue"]
 blur = ["stackblur-iter"]
+real-show = ["minifb"]
 default = ["save", "scale"]
 
 [profile.release]

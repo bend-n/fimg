@@ -47,6 +47,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         for y in ymin..ymax {
             for x in xmin..xmax {
                 // algorithm from https://web.archive.org/web/20050408192410/http://sw-shader.sourceforge.net/rasterizer.html, but im too dumb to implement the faster ones
+                // SAFETY: nNaN
                 if unsafe {
                     (x1 - x2) * (F::new(y as f32) - y1) + (-(y1 - y2) * (F::new(x as f32) - x1))
                         > 0.

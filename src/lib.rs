@@ -35,6 +35,17 @@
 //! - [`Image::repeated`]
 //! - [`Image::overlay`](Overlay), [`Image::overlay_at`](OverlayAt), [`Image::overlay_blended`](BlendingOverlay)
 //! - [`Image::blur`]
+//!
+//! ## feature flags
+//!
+//! - `scale`: enables the [`scale`] module.
+//! - `save`: enables [`Image::save`], via the [`png`](https://crates.io/crates/png) crate.
+//! - `text`: enables [`Image::text`], via the [`fontdue`](https://crates.io/crates/fontdue) crate.
+//! - `blur`: enables [`Image::blur`], via the [`stackblur`](https://crates.io/crates/stackblur-iter) crate.
+//! - `real-show`: [`Image::show`], if the `save` feature is enabled, will, by default, simply open the appropriate image viewing program.
+//! if, for some reason, this is inadequate/you dont have a good image viewer, enable the `real-show` feature to make [`Image::show`] open up a window of its own.
+//! without the `real-show` feature, [`Image::show`] will save itself to your temp directory, which you may not want.
+//! - `default`: \[`save`, `scale`\].
 #![feature(
     slice_swap_unchecked,
     generic_const_exprs,
@@ -75,6 +86,8 @@ mod overlay;
 pub mod pixels;
 #[cfg(feature = "scale")]
 pub mod scale;
+#[cfg(any(feature = "save", feature = "real-show"))]
+mod show;
 pub use cloner::ImageCloner;
 pub use overlay::{BlendingOverlay, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};
 pub use r#dyn::DynImage;
