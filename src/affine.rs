@@ -105,11 +105,18 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// UB if the image is not square
     #[must_use = "function does not modify the original image"]
     pub unsafe fn rot_90(&self) -> Image<Vec<u8>, CHANNELS> {
-        // SAFETY: yep
-        let mut out = unsafe { transpose_out(self) };
-        // SAFETY: sqar
-        unsafe { crev(out.as_mut()) };
-        out
+        let mut o = self.alloc();
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                // SAFETY: x and y in bounds, slice is okay
+                unsafe {
+                    let px = self.buffer.get_unchecked(self.slice(x, y));
+                    let out = o.pixel_mut(self.height() - y - 1, x);
+                    out.copy_from_slice(px);
+                }
+            }
+        }
+        o
     }
 
     /// Rotate an image 270 degrees clockwise, or 90 degrees anti clockwise.
@@ -153,26 +160,6 @@ impl<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, CHANNELS> {
         self.flip_h();
         // SAFETY: caller ensures squareness
         unsafe { transpose(self) };
-    }
-}
-
-/// Reverse columns of square image
-/// # Safety
-///
-/// UB if supplied image not square
-unsafe fn crev<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(mut img: Image<T, CHANNELS>) {
-    debug_assert_eq!(img.width(), img.height());
-    let size = img.width() as usize;
-    let b = img.flatten_mut();
-    for i in 0..size {
-        let mut start = 0;
-        let mut end = size - 1;
-        while start < end {
-            // SAFETY: hmm
-            unsafe { b.swap_unchecked(i * size + start, i * size + end) };
-            start += 1;
-            end -= 1;
-        }
     }
 }
 
