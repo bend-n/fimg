@@ -45,7 +45,7 @@ macro_rules! transparent {
 
 macro_rules! opaque {
     ($n: literal, $name: ident) => {
-        impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, $n> {
+        impl<T: AsRef<[u8]>> Image<T, $n> {
             /// Scale a
             #[doc = stringify!($name)]
             /// image with a given scaling algorithm.
