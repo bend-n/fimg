@@ -6,14 +6,15 @@ fn map<const A: usize, const B: usize>(image: Image<&[u8], A>) -> Image<Box<[u8]
 where
     [u8; B]: PFrom<A>,
 {
-    let buffer = image
-        .chunked()
-        .copied()
-        .flat_map(<[u8; B] as PFrom<A>>::pfrom)
-        .collect::<Vec<_>>()
-        .into();
-    // SAFETY: ctor
-    unsafe { Image::new(image.width, image.height, buffer) }
+    // SAFETY: size unchanged, just change pixels
+    unsafe {
+        image.mapped(|buf| {
+            buf.array_chunks::<A>()
+                .copied()
+                .flat_map(<[u8; B] as PFrom<A>>::pfrom)
+                .collect()
+        })
+    }
 }
 
 macro_rules! convert {
@@ -64,12 +65,12 @@ boxconv!(4 => 2);
 boxconv!(4 => 3);
 
 #[inline]
-const fn pack([r, g, b, a]: [u8; 4]) -> u32 {
+pub const fn pack([r, g, b, a]: [u8; 4]) -> u32 {
     ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
 }
 
 #[inline]
-const fn unpack(n: u32) -> [u8; 4] {
+pub const fn unpack(n: u32) -> [u8; 4] {
     [
         ((n >> 16) & 0xFF) as u8,
         ((n >> 8) & 0xFF) as u8,

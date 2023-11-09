@@ -2,10 +2,13 @@ use crate::Image;
 
 #[cfg(feature = "real-show")]
 mod real {
-    use crate::Image;
+    use crate::{pixels::convert::PFrom, Image};
     use minifb::{Key, Window};
 
-    pub fn show(i: Image<&[u32], 1>) {
+    pub fn show<const CHANNELS: usize>(i: Image<&[u8], CHANNELS>)
+    where
+        [u8; 4]: PFrom<CHANNELS>,
+    {
         let mut win = Window::new(
             "show",
             i.width() as usize,
@@ -13,9 +16,44 @@ mod real {
             Default::default(),
         )
         .unwrap();
-        win.limit_update_rate(Some(std::time::Duration::from_millis(100)));
+        let font = fontdue::Font::from_bytes(
+            &include_bytes!("../data/CascadiaCode.ttf")[..],
+            fontdue::FontSettings {
+                scale: 12.0,
+                ..Default::default()
+            },
+        )
+        .unwrap();
         while win.is_open() && !win.is_key_down(Key::Q) && !win.is_key_down(Key::Escape) {
-            win.update_with_buffer(&i.buffer, i.width() as usize, i.height() as usize)
+            let mut buf = Image::<Box<[u32]>, 1>::from(i.as_ref());
+
+            if !win.is_key_down(Key::H)
+                && let Some((x, y)) = win
+                    .get_mouse_pos(minifb::MouseMode::Discard)
+                    .map(|(x, y)| (x.round() as u32, y.round() as u32))
+                    .map(|(x, y)| (x.min(i.width()), y.min(i.height())))
+            {
+                // SAFETY: ctor
+                unsafe { Image::new(buf.width, buf.height, &mut *buf.buffer) }.text_u32(
+                    5,
+                    i.height() - 20,
+                    12.0,
+                    &font,
+                    &format!(
+                        "P ({x}, {y}), {}",
+                        // SAFETY: clampd
+                        match unsafe { &i.pixel(x, y)[..] } {
+                            [y] => format!("(Y {y})"),
+                            [y, a] => format!("(Y {y} A {a})"),
+                            [r, g, b] => format!("(R {r} G {g} B {b})"),
+                            [r, g, b, a] => format!("(R {r} G {g} B {b} A {a})"),
+                            _ => unreachable!(),
+                        }
+                    ),
+                    [238, 232, 213, 255],
+                )
+            }
+            win.update_with_buffer(&buf.buffer, i.width() as usize, i.height() as usize)
                 .expect("window update fail");
         }
     }
@@ -93,7 +131,7 @@ macro_rules! show {
             /// if the window is un creatable
             pub fn show(self) -> Self {
                 #[cfg(feature = "real-show")]
-                real::show(r(&self.as_ref().into()));
+                real::show(self.as_ref());
                 #[cfg(not(feature = "real-show"))]
                 fake::show!(self);
                 self
@@ -117,7 +155,7 @@ impl Image<Box<[u32]>, 1> {
     /// if the window is un creatable
     pub fn show(self) -> Self {
         #[cfg(feature = "real-show")]
-        real::show(r(&self));
+        real::show(Image::<Box<[u8]>, 4>::from(r(&self)).as_ref());
         #[cfg(not(feature = "real-show"))]
         fake::show!(Image::<Box<[u8]>, 4>::from(r(&self)));
         self

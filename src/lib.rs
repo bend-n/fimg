@@ -56,7 +56,8 @@
     array_windows,
     doc_auto_cfg,
     const_option,
-    array_chunks
+    array_chunks,
+    let_chains
 )]
 #![warn(
     clippy::undocumented_unsafe_blocks,
@@ -243,21 +244,52 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     pub unsafe fn buffer_mut(&mut self) -> &mut T {
         &mut self.buffer
     }
+
+    /// # Safety
+    ///
+    /// the output index is not guranteed to be in bounds
+    #[inline]
+    fn at(&self, x: u32, y: u32) -> usize {
+        debug_assert!(x < self.width(), "x out of bounds");
+        debug_assert!(y < self.height(), "y out of bounds");
+        #[allow(clippy::multiple_unsafe_ops_per_block)]
+        // SAFETY: me when uncheck math: 😧 (FIXME)
+        let index = unsafe {
+            let w = self.width();
+            // y * w + x
+            let tmp = (y as usize).unchecked_mul(w as usize);
+            tmp.unchecked_add(x as usize)
+        };
+        // SAFETY: 🧐 is unsound? 😖
+        unsafe { index.unchecked_mul(CHANNELS) }
+    }
+
+    /// # Safety
+    /// keep the buffer size the same
+    unsafe fn map<U, const N: usize, F: FnOnce(&T) -> U>(&self, f: F) -> Image<U, N> {
+        // SAFETY: we dont change anything, why check
+        unsafe { Image::new(self.width, self.height, f(self.buffer())) }
+    }
+
+    unsafe fn mapped<U, const N: usize, F: FnOnce(T) -> U>(self, f: F) -> Image<U, N> {
+        // SAFETY: we dont change anything, why check
+        unsafe { Image::new(self.width, self.height, f(self.buffer)) }
+    }
 }
 
 impl<const CHANNELS: usize, T: Clone> Image<&[T], CHANNELS> {
     /// Allocate a new `Image<Vec<T>>` from this imageref.
     pub fn to_owned(&self) -> Image<Vec<T>, CHANNELS> {
-        // SAFETY: we have been constructed already, so must be valid
-        unsafe { Image::new(self.width, self.height, self.buffer.to_vec()) }
+        // SAFETY: size not changed
+        unsafe { self.map(|b| b.to_vec()) }
     }
 }
 
 impl<const CHANNELS: usize, T: Clone> Image<&mut [T], CHANNELS> {
     /// Allocate a new `Image<Vec<T>>` from this mutable imageref.
     pub fn to_owned(&self) -> Image<Vec<T>, CHANNELS> {
-        // SAFETY: we have been constructed already, so must be valid
-        unsafe { Image::new(self.width, self.height, self.buffer.to_vec()) }
+        // SAFETY: size not changed
+        unsafe { self.map(|b| b.to_vec()) }
     }
 }
 
@@ -301,16 +333,16 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
 impl<const CHANNELS: usize, const N: usize> Image<[u8; N], CHANNELS> {
     /// Box this array image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
-        // SAFETY: ctor
-        unsafe { Image::new(self.width, self.height, Box::new(self.buffer)) }
+        // SAFETY: size not changed
+        unsafe { self.mapped(|b| b.into()) }
     }
 }
 
 impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     /// Box this image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
-        // SAFETY: ctor
-        unsafe { Image::new(self.width, self.height, self.buffer.into()) }
+        // SAFETY: size not changed
+        unsafe { self.mapped(|b| b.into()) }
     }
 }
 
@@ -318,7 +350,7 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// Box this owned image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
         // SAFETY: ctor
-        unsafe { Image::new(self.width, self.height, self.buffer.into_boxed_slice()) }
+        unsafe { self.mapped(|b| b.into()) }
     }
 }
 
@@ -367,29 +399,9 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     #[inline]
     fn slice(&self, x: u32, y: u32) -> impl SliceIndex<[u8], Output = [u8]> {
         let index = self.at(x, y);
+        debug_assert!(self.len() > index);
         // SAFETY: as long as the buffer isnt wrong, this is 😄
         index..unsafe { index.unchecked_add(CHANNELS) }
-    }
-
-    /// # Safety
-    ///
-    /// the output index is not guranteed to be in bounds
-    #[inline]
-    fn at(&self, x: u32, y: u32) -> usize {
-        debug_assert!(x < self.width(), "x out of bounds");
-        debug_assert!(y < self.height(), "y out of bounds");
-        #[allow(clippy::multiple_unsafe_ops_per_block)]
-        // SAFETY: me when uncheck math: 😧 (FIXME)
-        let index = unsafe {
-            let w = self.width();
-            // y * w + x
-            let tmp = (y as usize).unchecked_mul(w as usize);
-            tmp.unchecked_add(x as usize)
-        };
-        // SAFETY: 🧐 is unsound? 😖
-        let index = unsafe { index.unchecked_mul(CHANNELS) };
-        debug_assert!(self.len() > index);
-        index
     }
 
     /// Procure a [`ImageCloner`].
@@ -539,8 +551,8 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// Consumes and leaks this image, returning a reference to the image.
     #[must_use = "not using the returned reference is a memory leak"]
     pub fn leak(self) -> Image<&'static mut [u8], CHANNELS> {
-        // SAFETY: ctor
-        unsafe { Image::new(self.width, self.height, self.buffer.leak()) }
+        // SAFETY: size unchanged
+        unsafe { self.mapped(Vec::leak) }
     }
 }
 
@@ -548,8 +560,8 @@ impl<const CHANNELS: usize, T: ?Sized> Image<Box<T>, CHANNELS> {
     /// Consumes and leaks this image, returning a reference to the image.
     #[must_use = "not using the returned reference is a memory leak"]
     pub fn leak(self) -> Image<&'static mut T, CHANNELS> {
-        // SAFETY: ctor
-        unsafe { Image::new(self.width, self.height, Box::leak(self.buffer)) }
+        // SAFETY: size unchanged
+        unsafe { self.mapped(Box::leak) }
     }
 }
 
