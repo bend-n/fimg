@@ -1,4 +1,4 @@
-use crate::Image;
+use crate::{pixels::convert::PFrom, Image};
 mod affine;
 mod convert;
 #[cfg(feature = "scale")]
@@ -66,6 +66,25 @@ impl<T: AsRef<[u8]>> DynImage<T> {
     /// Reference this image.
     pub fn as_ref(&self) -> DynImage<&[u8]> {
         e!(self => |i| i.as_ref())
+    }
+
+    /// Get a pixel, of a type.
+    /// ```
+    /// # use fimg::{Image, DynImage};
+    /// let i = DynImage::Rgb(Image::alloc(50, 50));
+    /// assert_eq!(unsafe { i.pixel::<4>(25, 25) }, [0, 0, 0, 255]);
+    /// ```
+    /// # Safety
+    ///
+    /// undefined behaviour if pixel is out of bounds.
+    pub unsafe fn pixel<const P: usize>(&self, x: u32, y: u32) -> [u8; P]
+    where
+        [u8; P]: PFrom<1>,
+        [u8; P]: PFrom<2>,
+        [u8; P]: PFrom<3>,
+        [u8; P]: PFrom<4>,
+    {
+        e!(self, |i| PFrom::pfrom(unsafe { i.pixel(x, y) }))
     }
 
     /// Bytes of this image.
