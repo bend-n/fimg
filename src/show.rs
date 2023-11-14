@@ -2,12 +2,12 @@ use crate::Image;
 
 #[cfg(feature = "real-show")]
 mod real {
-    use crate::{pixels::convert::PFrom, Image};
+    use crate::Image;
     use minifb::{Key, Window};
 
     pub fn show<const CHANNELS: usize>(i: Image<&[u8], CHANNELS>)
     where
-        [u8; 4]: PFrom<CHANNELS>,
+        [u8; CHANNELS]: crate::Pack,
     {
         let mut win = Window::new(
             "show",

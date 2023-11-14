@@ -84,6 +84,8 @@ mod drawing;
 mod r#dyn;
 pub(crate) mod math;
 mod overlay;
+mod pack;
+pub use pack::Pack;
 pub mod pixels;
 #[cfg(feature = "scale")]
 pub mod scale;

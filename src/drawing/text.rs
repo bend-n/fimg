@@ -1,9 +1,8 @@
 //! text raster
 
 use crate::{
-    convert::{pack, unpack},
     pixels::{float, Wam},
-    Image,
+    Image, Pack,
 };
 use fontdue::{layout::TextStyle, Font};
 use umath::{generic_float::Constructors, FF32};
@@ -37,11 +36,12 @@ impl Image<&mut [u32], 1> {
                     // SAFETY: the rasterizer kinda promises that metrics width and height are in bounds
                     let fill = unsafe { float(*bitmap.get_unchecked(j * metrics.width + i)) };
                     // SAFETY: we clampin
-                    let bg = unsafe { unpack(*self.buffer.get_unchecked(self.at(x, y))) };
+                    let bg: [u8; 4] =
+                        unsafe { Pack::unpack(*self.buffer.get_unchecked(self.at(x, y))) };
                     // SAFETY: see above
                     *unsafe { self.buffer.get_unchecked_mut(self.at(x, y)) } =
                         // SAFETY: fill is 0..=1
-                        pack(unsafe { bg.wam(color, FF32::one() - fill, fill) });
+                        Pack::pack(unsafe { &bg.wam(color, FF32::one() - fill, fill) });
                 }
             }
         }

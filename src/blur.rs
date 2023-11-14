@@ -1,6 +1,6 @@
 use stackblur_iter::imgref::ImgRefMut;
 
-use crate::{pixels::convert::PFrom, Image};
+use crate::Image;
 
 impl<T: AsMut<[u32]> + AsRef<[u32]>> Image<T, 1> {
     /// Blur a image of packed 32 bit integers, `[0xAARRGGBB]`.
@@ -13,8 +13,7 @@ impl<T: AsMut<[u32]> + AsRef<[u32]>> Image<T, 1> {
 
 impl<const N: usize> Image<Box<[u8]>, N>
 where
-    [u8; 4]: PFrom<N>,
-    [u8; N]: PFrom<4>,
+    [u8; N]: crate::Pack,
 {
     /// Blur a image.
     /// ```
@@ -38,8 +37,7 @@ where
 
 impl<const N: usize> Image<&[u8], N>
 where
-    [u8; 4]: PFrom<N>,
-    [u8; N]: PFrom<4>,
+    [u8; N]: crate::Pack,
 {
     /// Blur a image.
     pub fn blur(self, radius: usize) -> Image<Box<[u8]>, N> {
