@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.26"
+version = "0.4.28"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -17,7 +17,7 @@ fontdue = { version = "0.7.3", optional = true }
 vecto = "0.1.0"
 umath = "0.0.7"
 fr = { version = "0.1.1", package = "fer", optional = true }
-stackblur-iter = { version = "0.2.0", features = ["simd"], optional = true }
+slur = { version = "0.1.0", optional = true }
 clipline = "0.1.1"
 minifb = { version = "0.25.0", default-features = false, features = [
     "x11",
@@ -56,7 +56,7 @@ harness = false
 scale = ["fr"]
 save = ["png"]
 text = ["fontdue"]
-blur = ["stackblur-iter"]
+blur = ["slur"]
 real-show = ["minifb", "text"]
 default = ["save", "scale"]
 
