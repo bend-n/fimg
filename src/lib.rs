@@ -70,7 +70,7 @@
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]
-use std::{num::NonZeroU32, slice::SliceIndex};
+use std::{num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
@@ -383,27 +383,140 @@ macro_rules! make {
     };
 }
 
-impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// The size of the underlying buffer.
     #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self) -> usize {
-        self.bytes().len()
-    }
-
-    /// Bytes of this image.
-    pub fn bytes(&self) -> &[u8] {
-        self.buffer.as_ref()
+    pub fn len<U>(&self) -> usize
+    where
+        T: AsRef<[U]>,
+    {
+        self.buffer().as_ref().len()
     }
 
     /// # Safety
     ///
     /// the output index is not guranteed to be in bounds
     #[inline]
-    fn slice(&self, x: u32, y: u32) -> impl SliceIndex<[u8], Output = [u8]> {
+    fn slice<U>(&self, x: u32, y: u32) -> Range<usize>
+    where
+        T: AsRef<[U]>,
+    {
         let index = self.at(x, y);
         debug_assert!(self.len() > index);
         // SAFETY: as long as the buffer isnt wrong, this is 😄
         index..unsafe { index.unchecked_add(CHANNELS) }
+    }
+
+    #[inline]
+    /// Returns a iterator over every pixel
+    pub fn chunked<'a, U: 'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a [U; CHANNELS]>
+    where
+        T: AsRef<[U]>,
+    {
+        // SAFETY: 0 sized images illegal
+        unsafe { assert_unchecked!(self.len() > CHANNELS) };
+        // SAFETY: no half pixels!
+        unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
+        self.buffer().as_ref().array_chunks::<CHANNELS>()
+    }
+
+    #[inline]
+    /// Flatten the chunks of this image into a slice of slices.
+    pub fn flatten<U>(&self) -> &[[U; CHANNELS]]
+    where
+        T: AsRef<[U]>,
+    {
+        // SAFETY: buffer cannot have half pixels
+        unsafe { self.buffer().as_ref().as_chunks_unchecked::<CHANNELS>() }
+    }
+
+    /// Return a pixel at (x, y).
+    /// # Safety
+    ///
+    /// - UB if x, y is out of bounds
+    /// - UB if buffer is too small
+    #[inline]
+    pub unsafe fn pixel<U: Copy>(&self, x: u32, y: u32) -> [U; CHANNELS]
+    where
+        T: AsRef<[U]>,
+    {
+        // SAFETY: x and y in bounds, slice is okay
+        let ptr = unsafe {
+            self.buffer()
+                .as_ref()
+                .get_unchecked(self.slice(x, y))
+                .as_ptr()
+                .cast()
+        };
+        // SAFETY: slice always returns a length of `CHANNELS`, so we `cast()` it for convenience.
+        unsafe { *ptr }
+    }
+
+    /// iterator over columns
+    /// returned iterator returns a iterator for each column
+    ///
+    /// ```text
+    /// ┌ ┐┌ ┐┌ ┐
+    /// │1││2││3│
+    /// │4││5││6│
+    /// │7││8││9│
+    /// └ ┘└ ┘└ ┘
+    /// ```
+    ///
+    /// ```
+    /// # use fimg::Image;
+    /// let img: Image<&[u8],1> = Image::build(2, 3).buf(&[
+    ///    1, 5,
+    ///    2, 4,
+    ///    7, 9
+    /// ]);
+    /// assert_eq!(
+    ///     img.cols().map(|x| x.collect::<Vec<_>>()).collect::<Vec<_>>(),
+    ///     [[[1], [2], [7]], [[5], [4], [9]]]
+    /// );
+    /// ```
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    pub fn cols<'a, U: Copy + 'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = impl DoubleEndedIterator<Item = [U; CHANNELS]> + '_>
+    where
+        T: AsRef<[U]>,
+    {
+        (0..self.width()).map(move |x| (0..self.height()).map(move |y| unsafe { self.pixel(x, y) }))
+    }
+
+    /// iterator over rows
+    /// returns a iterator over each row
+    /// ```text
+    /// [ 1 2 3 ]
+    /// [ 4 5 6 ]
+    /// [ 7 8 9 ]
+    /// ```
+    ///
+    /// ```
+    /// let img: Image<&[u8],1> = Image::build(2, 3).buf(&[
+    ///     1, 5,
+    ///     2, 4,
+    ///     7, 9
+    /// ]);
+    /// assert_eq!(
+    ///     rows(img).collect::<Vec<_>>(),
+    ///     [[[1], [5]], [[2], [4]], [[7], [9]]]
+    /// );
+    /// ```
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    pub fn rows<'a, U: 'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a [[U; CHANNELS]]>
+    where
+        T: AsRef<[U]>,
+    {
+        unsafe { self.buffer().as_ref().as_chunks_unchecked() }.chunks_exact(self.width() as usize)
+    }
+}
+
+impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+    /// Bytes of this image.
+    pub fn bytes(&self) -> &[u8] {
+        self.buffer.as_ref()
     }
 
     /// Procure a [`ImageCloner`].
@@ -416,42 +529,6 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
         // SAFETY: we got constructed okay, parameters must be valid
         unsafe { Image::new(self.width, self.height, self.bytes()) }
-    }
-
-    #[inline]
-    /// Returns a iterator over every pixel
-    pub fn chunked(&self) -> impl DoubleEndedIterator<Item = &[u8; CHANNELS]> {
-        // SAFETY: 0 sized images illegal
-        unsafe { assert_unchecked!(self.len() > CHANNELS) };
-        // SAFETY: no half pixels!
-        unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
-        self.bytes().array_chunks::<CHANNELS>()
-    }
-
-    #[inline]
-    /// Flatten the chunks of this image into a slice of slices.
-    pub fn flatten(&self) -> &[[u8; CHANNELS]] {
-        // SAFETY: buffer cannot have half pixels
-        unsafe { self.bytes().as_chunks_unchecked::<CHANNELS>() }
-    }
-
-    /// Return a pixel at (x, y).
-    /// # Safety
-    ///
-    /// - UB if x, y is out of bounds
-    /// - UB if buffer is too small
-    #[inline]
-    pub unsafe fn pixel(&self, x: u32, y: u32) -> [u8; CHANNELS] {
-        // SAFETY: x and y in bounds, slice is okay
-        let ptr = unsafe {
-            self.buffer
-                .as_ref()
-                .get_unchecked(self.slice(x, y))
-                .as_ptr()
-                .cast()
-        };
-        // SAFETY: slice always returns a length of `CHANNELS`, so we `cast()` it for convenience.
-        unsafe { *ptr }
     }
 }
 
