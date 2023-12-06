@@ -35,6 +35,7 @@
 //! - [`Image::repeated`]
 //! - [`Image::overlay`](Overlay), [`Image::overlay_at`](OverlayAt), [`Image::overlay_blended`](BlendingOverlay)
 //! - [`Image::blur`]
+//! - [`Image::crop`]
 //!
 //! ## feature flags
 //!
@@ -70,12 +71,12 @@
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]
-use std::{num::NonZeroU32, slice::SliceIndex};
+use std::{num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
 mod blur;
-#[doc(hidden)]
+pub use sub::{Cropper, SubImage};
 pub mod builder;
 #[doc(hidden)]
 pub mod cloner;
@@ -85,6 +86,7 @@ mod r#dyn;
 pub(crate) mod math;
 mod overlay;
 mod pack;
+mod sub;
 pub use pack::Pack;
 pub mod pixels;
 #[cfg(feature = "scale")]
@@ -383,56 +385,69 @@ macro_rules! make {
     };
 }
 
-impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// The size of the underlying buffer.
     #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self) -> usize {
-        self.bytes().len()
-    }
-
-    /// Bytes of this image.
-    pub fn bytes(&self) -> &[u8] {
-        self.buffer.as_ref()
+    pub fn len<U>(&self) -> usize
+    where
+        T: AsRef<[U]>,
+    {
+        self.buffer().as_ref().len()
     }
 
     /// # Safety
     ///
     /// the output index is not guranteed to be in bounds
     #[inline]
-    fn slice(&self, x: u32, y: u32) -> impl SliceIndex<[u8], Output = [u8]> {
+    fn slice<U>(&self, x: u32, y: u32) -> Range<usize>
+    where
+        T: AsRef<[U]>,
+    {
         let index = self.at(x, y);
         debug_assert!(self.len() > index);
         // SAFETY: as long as the buffer isnt wrong, this is 😄
         index..unsafe { index.unchecked_add(CHANNELS) }
     }
 
-    /// Procure a [`ImageCloner`].
-    #[must_use = "function does not modify the original image"]
-    pub fn cloner(&self) -> ImageCloner<'_, CHANNELS> {
-        ImageCloner::from(self.as_ref())
-    }
-
-    /// Reference this image.
-    pub fn as_ref(&self) -> Image<&[u8], CHANNELS> {
-        // SAFETY: we got constructed okay, parameters must be valid
-        unsafe { Image::new(self.width, self.height, self.bytes()) }
-    }
-
     #[inline]
     /// Returns a iterator over every pixel
-    pub fn chunked(&self) -> impl DoubleEndedIterator<Item = &[u8; CHANNELS]> {
+    pub fn chunked<'a, U: 'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a [U; CHANNELS]>
+    where
+        T: AsRef<[U]>,
+    {
         // SAFETY: 0 sized images illegal
         unsafe { assert_unchecked!(self.len() > CHANNELS) };
         // SAFETY: no half pixels!
         unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
-        self.bytes().array_chunks::<CHANNELS>()
+        self.buffer().as_ref().array_chunks::<CHANNELS>()
     }
 
     #[inline]
     /// Flatten the chunks of this image into a slice of slices.
-    pub fn flatten(&self) -> &[[u8; CHANNELS]] {
+    pub fn flatten<U>(&self) -> &[[U; CHANNELS]]
+    where
+        T: AsRef<[U]>,
+    {
         // SAFETY: buffer cannot have half pixels
-        unsafe { self.bytes().as_chunks_unchecked::<CHANNELS>() }
+        unsafe { self.buffer().as_ref().as_chunks_unchecked::<CHANNELS>() }
+    }
+
+    /// Create a mutref to this image
+    pub fn as_mut<U>(&mut self) -> Image<&mut [U], CHANNELS>
+    where
+        T: AsMut<[U]>,
+    {
+        // SAFETY: construction went okay
+        unsafe { Image::new(self.width, self.height, self.buffer.as_mut()) }
+    }
+
+    /// Reference this image.
+    pub fn as_ref<U>(&self) -> Image<&[U], CHANNELS>
+    where
+        T: AsRef<[U]>,
+    {
+        // SAFETY: we got constructed okay, parameters must be valid
+        unsafe { Image::new(self.width, self.height, self.buffer().as_ref()) }
     }
 
     /// Return a pixel at (x, y).
@@ -441,10 +456,13 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// - UB if x, y is out of bounds
     /// - UB if buffer is too small
     #[inline]
-    pub unsafe fn pixel(&self, x: u32, y: u32) -> [u8; CHANNELS] {
+    pub unsafe fn pixel<U: Copy>(&self, x: u32, y: u32) -> [U; CHANNELS]
+    where
+        T: AsRef<[U]>,
+    {
         // SAFETY: x and y in bounds, slice is okay
         let ptr = unsafe {
-            self.buffer
+            self.buffer()
                 .as_ref()
                 .get_unchecked(self.slice(x, y))
                 .as_ptr()
@@ -453,22 +471,38 @@ impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         // SAFETY: slice always returns a length of `CHANNELS`, so we `cast()` it for convenience.
         unsafe { *ptr }
     }
-}
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Return a mutable reference to a pixel at (x, y).
     /// # Safety
     ///
     /// - UB if x, y is out of bounds
     /// - UB if buffer is too small
     #[inline]
-    pub unsafe fn pixel_mut(&mut self, x: u32, y: u32) -> &mut [u8] {
+    pub unsafe fn pixel_mut<U: Copy>(&mut self, x: u32, y: u32) -> &mut [U]
+    where
+        T: AsMut<[U]> + AsRef<[U]>,
+    {
         // SAFETY: we have been told x, y is in bounds.
         let idx = self.slice(x, y);
         // SAFETY: slice should always return a valid index
         unsafe { self.buffer.as_mut().get_unchecked_mut(idx) }
     }
+}
 
+impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
+    /// Bytes of this image.
+    pub fn bytes(&self) -> &[u8] {
+        self.buffer.as_ref()
+    }
+
+    /// Procure a [`ImageCloner`].
+    #[must_use = "function does not modify the original image"]
+    pub fn cloner(&self) -> ImageCloner<'_, CHANNELS> {
+        ImageCloner::from(self.as_ref())
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     #[inline]
     /// Returns a iterator over every pixel, mutably
     pub fn chunked_mut(&mut self) -> impl Iterator<Item = &mut [u8; CHANNELS]> {
@@ -477,12 +511,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         // SAFETY: buffer cannot have half pixels
         unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
         self.buffer.as_mut().array_chunks_mut::<CHANNELS>()
-    }
-
-    /// Create a mutref to this image
-    pub fn as_mut(&mut self) -> Image<&mut [u8], CHANNELS> {
-        // SAFETY: construction went okay
-        unsafe { Image::new(self.width, self.height, self.buffer.as_mut()) }
     }
 
     #[inline]
