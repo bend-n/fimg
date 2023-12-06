@@ -61,6 +61,20 @@ impl<const C: usize> Builder<Vec<u8>, C> {
     }
 }
 
+impl<T: Copy, const C: usize> Builder<Box<[T]>, C> {
+    /// Fill this image with a certain pixel.
+    /// ```
+    /// # use fimg::Image;
+    ///
+    /// // fill black
+    /// Image::build(50, 50).fill([0, 0, 0, 255]);
+    /// ```
+    pub fn fill(self, with: [T; C]) -> Image<Box<[T]>, C> {
+        Image::build(self.width, self.height)
+            .buf((0..self.width * self.height).flat_map(|_| with).collect())
+    }
+}
+
 /// seals the [`Buffer`] trait
 mod buf {
     /// A valid buffer for use in the builder
