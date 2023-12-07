@@ -4,7 +4,7 @@ use crate::cloner::ImageCloner;
 
 use super::{assert_unchecked, Image};
 use crate::pixels::Blend;
-use std::simd::{simd_swizzle, Simd, SimdInt, SimdPartialOrd};
+use std::simd::prelude::*;
 
 /// Trait for layering a image ontop of another, with a offset to the second image.
 pub trait OverlayAt<W> {
