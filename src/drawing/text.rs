@@ -7,16 +7,13 @@ use crate::{
 use fontdue::{layout::TextStyle, Font};
 use umath::{generic_float::Constructors, FF32};
 
-impl Image<&mut [u32], 1> {
-    pub(crate) fn text_u32(
-        &mut self,
-        x: u32,
-        y: u32,
-        size: f32,
-        font: &Font,
-        text: &str,
-        color: [u8; 4],
-    ) {
+/// note: `N` may != channels
+pub trait Text<const N: usize> {
+    fn text(&mut self, x: u32, y: u32, size: f32, font: &Font, text: &str, color: [u8; N]);
+}
+
+impl<T: AsMut<[u32]> + AsRef<[u32]>> Text<4> for Image<T, 1> {
+    fn text(&mut self, x: u32, y: u32, size: f32, font: &Font, text: &str, color: [u8; 4]) {
         let mut lay =
             fontdue::layout::Layout::new(fontdue::layout::CoordinateSystem::PositiveYDown);
         lay.append(&[font], &TextStyle::new(text, size, 0));
@@ -36,10 +33,9 @@ impl Image<&mut [u32], 1> {
                     // SAFETY: the rasterizer kinda promises that metrics width and height are in bounds
                     let fill = unsafe { float(*bitmap.get_unchecked(j * metrics.width + i)) };
                     // SAFETY: we clampin
-                    let bg: [u8; 4] =
-                        unsafe { Pack::unpack(*self.buffer.get_unchecked(self.at(x, y))) };
+                    let bg: [u8; 4] = unsafe { Pack::unpack(self.pixel(x, y)[0]) };
                     // SAFETY: see above
-                    *unsafe { self.buffer.get_unchecked_mut(self.at(x, y)) } =
+                    *(&mut unsafe { self.pixel_mut(x, y) }[0]) =
                         // SAFETY: fill is 0..=1
                         Pack::pack(unsafe { &bg.wam(color, FF32::one() - fill, fill) });
                 }
@@ -48,23 +44,8 @@ impl Image<&mut [u32], 1> {
     }
 }
 
-impl<const N: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, N> {
-    /// Draw text.
-    ///
-    /// ```
-    /// # use fimg::Image;
-    /// let font = fontdue::Font::from_bytes(
-    ///     &include_bytes!("../../data/CascadiaCode.ttf")[..],
-    ///     fontdue::FontSettings {
-    ///         scale: 200.0,
-    ///         ..Default::default()
-    ///     },
-    /// ).unwrap();
-    /// let mut i: Image<_, 4> = Image::alloc(750, 250).boxed();
-    /// i.text(50, 10, 200.0, &font, "hello", [0, 0, 0, 255]);
-    /// # assert_eq!(&**i.buffer(), include_bytes!("../../tdata/text.imgbuf"));
-    /// ```
-    pub fn text(&mut self, x: u32, y: u32, size: f32, font: &Font, text: &str, color: [u8; N]) {
+impl<const N: usize, T: AsMut<[u8]> + AsRef<[u8]>> Text<N> for Image<T, N> {
+    fn text(&mut self, x: u32, y: u32, size: f32, font: &Font, text: &str, color: [u8; N]) {
         let mut lay =
             fontdue::layout::Layout::new(fontdue::layout::CoordinateSystem::PositiveYDown);
         lay.append(&[font], &TextStyle::new(text, size, 0));
@@ -90,5 +71,36 @@ impl<const N: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, N> {
                 }
             }
         }
+    }
+}
+
+impl<const N: usize, T> Image<T, N> {
+    /// Draw text.
+    ///
+    /// ```
+    /// # use fimg::Image;
+    /// let font = fontdue::Font::from_bytes(
+    ///     &include_bytes!("../../data/CascadiaCode.ttf")[..],
+    ///     fontdue::FontSettings {
+    ///         scale: 200.0,
+    ///         ..Default::default()
+    ///     },
+    /// ).unwrap();
+    /// let mut i: Image<_, 4> = Image::alloc(750, 250).boxed();
+    /// i.text(50, 10, 200.0, &font, "hello", [0, 0, 0, 255]);
+    /// # assert_eq!(&**i.buffer(), include_bytes!("../../tdata/text.imgbuf"));
+    /// ```
+    pub fn text<const P: usize>(
+        &mut self,
+        x: u32,
+        y: u32,
+        size: f32,
+        font: &Font,
+        text: &str,
+        color: [u8; P],
+    ) where
+        Image<T, N>: Text<P>,
+    {
+        Text::text(self, x, y, size, font, text, color)
     }
 }

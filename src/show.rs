@@ -34,7 +34,7 @@ mod real {
                     .map(|(x, y)| (x.min(i.width()), y.min(i.height())))
             {
                 // SAFETY: ctor
-                unsafe { Image::new(buf.width, buf.height, &mut *buf.buffer) }.text_u32(
+                unsafe { Image::new(buf.width, buf.height, &mut *buf.buffer) }.text(
                     5,
                     i.height() - 20,
                     12.0,
