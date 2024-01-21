@@ -231,6 +231,24 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Im
     }
 }
 
+impl ClonerOverlayAt<3, 3> for ImageCloner<'_, 3> {
+    /// Overlay a RGB image(with) => self at coordinates x, y.
+    /// As this is a `RGBxRGB` operation, blending is unnecessary,
+    /// and this is simply a copy.
+    ///
+    /// # Safety
+    ///
+    /// UB if x, y is out of bounds
+    #[inline]
+    #[must_use = "function does not modify the original image"]
+    unsafe fn overlay_at(&self, with: &Image<&[u8], 3>, x: u32, y: u32) -> Image<Vec<u8>, 3> {
+        let mut out = self.dup();
+        // SAFETY: same
+        unsafe { out.as_mut().overlay_at(with, x, y) };
+        out
+    }
+}
+
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Image<T, 3> {
     #[inline]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
