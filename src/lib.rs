@@ -48,6 +48,7 @@
 //! without the `real-show` feature, [`Image::show`] will save itself to your temp directory, which you may not want.
 //! - `default`: \[`save`, `scale`\].
 #![feature(
+    maybe_uninit_write_slice,
     slice_swap_unchecked,
     generic_const_exprs,
     slice_as_chunks,
@@ -71,7 +72,7 @@
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]
-use std::{num::NonZeroU32, ops::Range};
+use std::{mem::MaybeUninit, num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
@@ -96,6 +97,28 @@ mod show;
 pub use cloner::ImageCloner;
 pub use overlay::{BlendingOverlay, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};
 pub use r#dyn::DynImage;
+
+trait CopyWithinUnchecked {
+    /// # Safety
+    ///
+    /// panicless version of [`[T]::copy_within`](`slice::copy_within`), where the slices cant overlap. this uses `memcpy`.
+    /// your slices must be in bounds.
+    /// this isnt a public function, so im not going to say exactly what "in bounds" meeans.
+    unsafe fn copy_within_unchecked(&mut self, src: Range<usize>, dest: usize);
+}
+
+impl<T> CopyWithinUnchecked for [T] {
+    unsafe fn copy_within_unchecked(&mut self, src: Range<usize>, dest: usize) {
+        let std::ops::Range { start, end } = src;
+        debug_assert!(dest <= self.len() - end - start, "dest is out of bounds");
+        #[allow(clippy::multiple_unsafe_ops_per_block)]
+        // SAFETY: the caller better be good
+        unsafe {
+            let ptr = self.as_mut_ptr();
+            std::ptr::copy_nonoverlapping(ptr.add(start), ptr.add(dest), end - start)
+        };
+    }
+}
 
 /// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
 ///
@@ -129,7 +152,9 @@ impl Image<&[u8], 3> {
     /// ```
     #[must_use = "function does not modify the original image"]
     pub unsafe fn repeated(&self, out_width: u32, out_height: u32) -> Image<Vec<u8>, 3> {
-        let mut img = Image::<_, 3>::alloc(out_width, out_height);
+        let mut img = Vec::with_capacity(3 * out_width as usize * out_height as usize);
+        debug_assert!(out_width % self.width() == 0);
+        debug_assert!(out_height % self.height() == 0);
         for y in 0..self.height() {
             // SAFETY: get one row of pixels
             let from = unsafe {
@@ -137,25 +162,43 @@ impl Image<&[u8], 3> {
                     .get_unchecked(self.at(0, y)..self.at(0, y) + (self.width() as usize * 3))
             };
             debug_assert_eq!(from.len(), self.width() as usize * 3);
-            let first = img.at(0, y)..img.at(self.width(), y);
+            let first =
+                ((y * out_width) as usize * 3)..((y * out_width + self.width()) as usize * 3);
             // SAFETY: put it in the output
-            let to = unsafe { img.buffer.get_unchecked_mut(first.clone()) };
+            let to = unsafe { img.spare_capacity_mut().get_unchecked_mut(first.clone()) };
             // copy it in
-            to.copy_from_slice(from);
+            unsafe { assert_unchecked!(to.len() == from.len()) };
+            MaybeUninit::write_slice(to, from);
+
             for x in 1..(out_width / self.width()) {
-                let section = img.at(x * self.width(), y);
+                let section = (y * out_width + x * self.width()) as usize * 3;
                 // SAFETY: copy each row of the image one by one
-                unsafe { img.copy_within(first.clone(), section) };
+                unsafe {
+                    img.spare_capacity_mut()
+                        .copy_within_unchecked(first.clone(), section)
+                };
             }
         }
 
-        let first_row = 0..img.at(0, self.height());
+        let first_row = 0..(self.height() * out_width) as usize * 3;
         for y in 1..(out_height / self.height()) {
-            let this_row = img.at(0, y * self.height());
+            let this_row = (y * self.height() * out_width) as usize * 3;
             // SAFETY: copy entire blocks of image at a time
-            unsafe { img.copy_within(first_row.clone(), this_row) };
+            unsafe {
+                img.spare_capacity_mut()
+                    .copy_within_unchecked(first_row.clone(), this_row)
+            };
         }
-        img
+        // SAFETY: we init
+        unsafe { img.set_len(3 * out_width as usize * out_height as usize) };
+        // SAFETY: ok
+        unsafe {
+            Image::new(
+                out_width.try_into().unwrap(),
+                out_height.try_into().unwrap(),
+                img,
+            )
+        }
     }
 }
 
@@ -518,25 +561,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     pub fn flatten_mut(&mut self) -> &mut [[u8; CHANNELS]] {
         // SAFETY: buffer cannot have half pixels
         unsafe { self.buffer.as_mut().as_chunks_unchecked_mut::<CHANNELS>() }
-    }
-
-    /// # Safety
-    ///
-    /// panicless version of [`[T]::copy_within`](`slice::copy_within`), where the slices cant overlap. this uses `memcpy`.
-    /// your slices must be in bounds.
-    /// this isnt a public function, so im not going to say exactly what "in bounds" meeans.
-    unsafe fn copy_within(&mut self, src: std::ops::Range<usize>, dest: usize) {
-        let std::ops::Range { start, end } = src;
-        debug_assert!(
-            dest <= self.bytes().len() - end - start,
-            "dest is out of bounds"
-        );
-        #[allow(clippy::multiple_unsafe_ops_per_block)]
-        // SAFETY: the caller better be good
-        unsafe {
-            let ptr = self.buffer.as_mut().as_mut_ptr();
-            std::ptr::copy_nonoverlapping(ptr.add(start), ptr.add(dest), end - start)
-        };
     }
 
     /// Set the pixel at x, y
