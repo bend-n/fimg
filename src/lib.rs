@@ -72,7 +72,7 @@
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]
-use std::{mem::MaybeUninit, num::NonZeroU32, ops::Range};
+use std::{num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
@@ -87,7 +87,9 @@ mod r#dyn;
 pub(crate) mod math;
 mod overlay;
 mod pack;
+mod span;
 mod sub;
+pub mod uninit;
 pub use pack::Pack;
 pub mod pixels;
 #[cfg(feature = "scale")]
@@ -139,6 +141,26 @@ macro_rules! assert_unchecked {
 }
 use assert_unchecked;
 
+trait At {
+    fn at<const C: usize>(self, x: u32, y: u32) -> usize;
+}
+
+impl At for (u32, u32) {
+    fn at<const C: usize>(self, x: u32, y: u32) -> usize {
+        debug_assert!(x < self.0, "x out of bounds");
+        debug_assert!(y < self.1, "y out of bounds");
+        #[allow(clippy::multiple_unsafe_ops_per_block)]
+        // SAFETY: me when uncheck math: 😧 (FIXME)
+        let index = unsafe {
+            // y * w + x
+            let tmp = (y as usize).unchecked_mul(self.0 as usize);
+            tmp.unchecked_add(x as usize)
+        };
+        // SAFETY: 🧐 is unsound? 😖
+        unsafe { index.unchecked_mul(C) }
+    }
+}
+
 impl Image<&[u8], 3> {
     /// Tile self till it fills a new image of size x, y
     /// # Safety
@@ -152,7 +174,10 @@ impl Image<&[u8], 3> {
     /// ```
     #[must_use = "function does not modify the original image"]
     pub unsafe fn repeated(&self, out_width: u32, out_height: u32) -> Image<Vec<u8>, 3> {
-        let mut img = Vec::with_capacity(3 * out_width as usize * out_height as usize);
+        let mut img = uninit::Image::new(
+            out_width.try_into().unwrap(),
+            out_height.try_into().unwrap(),
+        );
         debug_assert!(out_width % self.width() == 0);
         debug_assert!(out_height % self.height() == 0);
         for y in 0..self.height() {
@@ -162,43 +187,25 @@ impl Image<&[u8], 3> {
                     .get_unchecked(self.at(0, y)..self.at(0, y) + (self.width() as usize * 3))
             };
             debug_assert_eq!(from.len(), self.width() as usize * 3);
-            let first =
-                ((y * out_width) as usize * 3)..((y * out_width + self.width()) as usize * 3);
-            // SAFETY: put it in the output
-            let to = unsafe { img.spare_capacity_mut().get_unchecked_mut(first.clone()) };
-            // copy it in
-            unsafe { assert_unchecked!(to.len() == from.len()) };
-            MaybeUninit::write_slice(to, from);
+            let first = (0, y)..(self.width(), y);
+            // SAFETY: copy it in
+            unsafe { img.write(from, first.clone()) };
 
             for x in 1..(out_width / self.width()) {
-                let section = (y * out_width + x * self.width()) as usize * 3;
+                let section = img.at(x * self.width(), y);
                 // SAFETY: copy each row of the image one by one
-                unsafe {
-                    img.spare_capacity_mut()
-                        .copy_within_unchecked(first.clone(), section)
-                };
+                unsafe { img.copy_within(first.clone(), section) };
             }
         }
 
-        let first_row = 0..(self.height() * out_width) as usize * 3;
+        let first_row = 0..img.at(0, self.height());
         for y in 1..(out_height / self.height()) {
-            let this_row = (y * self.height() * out_width) as usize * 3;
+            let this_row = img.at(0, y * self.height());
             // SAFETY: copy entire blocks of image at a time
-            unsafe {
-                img.spare_capacity_mut()
-                    .copy_within_unchecked(first_row.clone(), this_row)
-            };
+            unsafe { img.copy_within(first_row.clone(), this_row) };
         }
         // SAFETY: we init
-        unsafe { img.set_len(3 * out_width as usize * out_height as usize) };
-        // SAFETY: ok
-        unsafe {
-            Image::new(
-                out_width.try_into().unwrap(),
-                out_height.try_into().unwrap(),
-                img,
-            )
-        }
+        unsafe { img.assume_init() }
     }
 }
 
@@ -297,18 +304,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// the output index is not guranteed to be in bounds
     #[inline]
     fn at(&self, x: u32, y: u32) -> usize {
-        debug_assert!(x < self.width(), "x out of bounds");
-        debug_assert!(y < self.height(), "y out of bounds");
-        #[allow(clippy::multiple_unsafe_ops_per_block)]
-        // SAFETY: me when uncheck math: 😧 (FIXME)
-        let index = unsafe {
-            let w = self.width();
-            // y * w + x
-            let tmp = (y as usize).unchecked_mul(w as usize);
-            tmp.unchecked_add(x as usize)
-        };
-        // SAFETY: 🧐 is unsound? 😖
-        unsafe { index.unchecked_mul(CHANNELS) }
+        (self.width(), self.height()).at::<CHANNELS>(x, y)
     }
 
     /// # Safety
