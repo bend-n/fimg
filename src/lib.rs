@@ -438,7 +438,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         T: AsRef<[U]>,
     {
         // SAFETY: 0 sized images illegal
-        unsafe { assert_unchecked(self.len() > CHANNELS) };
+        unsafe { assert_unchecked(self.len() >= CHANNELS) };
         // SAFETY: no half pixels!
         unsafe { assert_unchecked(self.len() % CHANNELS == 0) };
         self.buffer().as_ref().array_chunks::<CHANNELS>()
@@ -529,7 +529,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Returns a iterator over every pixel, mutably
     pub fn chunked_mut(&mut self) -> impl Iterator<Item = &mut [u8; CHANNELS]> {
         // SAFETY: 0 sized images are not allowed
-        unsafe { assert_unchecked(self.len() > CHANNELS) };
+        unsafe { assert_unchecked(self.len() >= CHANNELS) };
         // SAFETY: buffer cannot have half pixels
         unsafe { assert_unchecked(self.len() % CHANNELS == 0) };
         self.buffer.as_mut().array_chunks_mut::<CHANNELS>()
