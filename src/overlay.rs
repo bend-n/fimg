@@ -76,7 +76,7 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     while dsti + 16 <= rgb.len() {
         // SAFETY: i think it ok
         let old: Simd<u8, 16> = Simd::from_slice(unsafe { rgb.get_unchecked(dsti..dsti + 16) });
-        // SAFETY: definetly ok
+        // SAFETY: definitly ok
         let new: Simd<u8, 16> = Simd::from_slice(unsafe { rgba.get_unchecked(srci..srci + 16) });
 
         let threshold = new.simd_ge(Simd::splat(128)).to_int().cast::<u8>();
@@ -98,7 +98,7 @@ unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
     }
 
     while dsti + 3 <= rgb.len() {
-        // SAFETY: caller gurantees slice is big enough
+        // SAFETY: caller guarantees slice is big enough
         if unsafe { *rgba.get_unchecked(srci + 3) } >= 128 {
             // SAFETY: slice is big enough!
             let src = unsafe { rgba.get_unchecked(srci..=srci + 2) };

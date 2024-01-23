@@ -8,7 +8,8 @@
 //!
 //! - [`Image`]: the main image type.
 //! - [`DynImage`]: This is the image type you use when, say, loading a png. You should immediately convert this into a
-//! - [`ImageCloner`]: this is... a [`Image`], but about to be cloned. It just allows some simple out-of-place optimizations, that `.clone().op()` dont  allow. (produce with [`Image::cloner`])
+//! - [`ImageCloner`]: This is... a [`Image`], but about to be cloned. It just allows some simple out-of-place optimizations, that `.clone().op()` dont  allow. (produce with [`Image::cloner`])
+//! - [`uninit::Image`]: A uninitialized image. Used for performance optimization.
 //!
 //! ### Operations
 //!
@@ -283,7 +284,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 
     /// # Safety
     ///
-    /// the output index is not guranteed to be in bounds
+    /// the output index is not guaranteed to be in bounds
     #[inline]
     fn at(&self, x: u32, y: u32) -> usize {
         (self.width(), self.height()).at::<CHANNELS>(x, y)
@@ -418,7 +419,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 
     /// # Safety
     ///
-    /// the output index is not guranteed to be in bounds
+    /// the output index is not guaranteed to be in bounds
     #[inline]
     fn slice<U>(&self, x: u32, y: u32) -> Range<usize>
     where

@@ -207,10 +207,10 @@ unsafe fn transpose<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>>(
 ) {
     debug_assert_eq!(img.width(), img.height());
     if img.width().is_power_of_two() {
-        // SAFETY: caller gurantees
+        // SAFETY: caller guarantees
         unsafe { transpose_diag(img, 0, img.width() as usize) };
     } else {
-        // SAFETY: caller gurantees
+        // SAFETY: caller guarantees
         unsafe { transpose_non_power_of_two(img) };
     }
 }

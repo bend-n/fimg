@@ -1,14 +1,8 @@
 //! the houser of uninitialized memory. €$@!0В𴬔!℡
 //!
 //! contains [`Image`], an uninitialized image.
-use std::{
-    hint::assert_unchecked,
-    mem::MaybeUninit,
-    num::NonZeroU32,
-    ops::{Index, IndexMut},
-};
-
 use crate::{span::Span, CopyWithinUnchecked};
+use std::{hint::assert_unchecked, mem::MaybeUninit, num::NonZeroU32, ops::Index};
 
 /// A uninitialized image. Be sure to initialize it!
 pub struct Image<T: Copy, const CHANNELS: usize> {
@@ -72,7 +66,7 @@ impl<T: Copy, const CHANNELS: usize> Image<T, CHANNELS> {
 
     /// # Safety
     ///
-    /// the output index is not guranteed to be in bounds
+    /// the output index is not guaranteed to be in bounds
     #[inline]
     pub fn at(&self, x: u32, y: u32) -> usize {
         crate::At::at::<CHANNELS>((self.width(), self.height()), x, y)
