@@ -1,10 +1,10 @@
 //! Handles image overlay
 // TODO Y/YA
-use crate::cloner::ImageCloner;
+use crate::{cloner::ImageCloner, uninit};
 
 use super::{assert_unchecked, Image};
 use crate::pixels::Blend;
-use std::simd::prelude::*;
+use std::{mem::transmute, simd::prelude::*};
 
 /// Trait for layering a image ontop of another, with a offset to the second image.
 pub trait OverlayAt<W> {
@@ -181,6 +181,30 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Im
     }
 }
 
+impl<U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for uninit::Image<u8, 3> {
+    unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
+        // SAFETY: caller upholds this
+        unsafe { assert_unchecked(x + with.width() <= self.width()) };
+        debug_assert!(y + with.height() <= self.height());
+        for j in 0..with.height() {
+            let i_x = j as usize * with.width() as usize * 4
+                ..(j as usize + 1) * with.width() as usize * 4;
+            let o_x = ((j as usize + y as usize) * self.width() as usize + x as usize) * 3
+                ..((j as usize + y as usize) * self.width() as usize
+                    + x as usize
+                    + with.width() as usize)
+                    * 3;
+            // SAFETY: index is in bounds
+            let rgb = unsafe { transmute(self.buf().get_unchecked_mut(o_x)) };
+            // SAFETY: bounds are outside index
+            let rgba = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
+            // SAFETY: arguments are 🟢
+            unsafe { blit(rgb, rgba) }
+        }
+        self
+    }
+}
+
 impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
     #[inline]
     #[must_use = "function does not modify the original image"]
@@ -189,6 +213,26 @@ impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
         // SAFETY: same
         unsafe { new.as_mut().overlay_at(with, x, y) };
         new
+    }
+}
+
+impl<U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for uninit::Image<u8, 3> {
+    #[inline]
+    unsafe fn overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
+        for j in 0..(with.width() as usize) {
+            let i_x = j * (with.width() as usize) * 3..(j + 1) * (with.width() as usize) * 3;
+            let o_x = ((j + y as usize) * self.width() as usize + x as usize) * 3
+                ..((j + y as usize) * self.width() as usize + x as usize + (with.width() as usize))
+                    * 3;
+            // <= because ".." range
+            debug_assert!(o_x.end <= self.buffer().as_ref().len());
+            debug_assert!(i_x.end <= with.buffer().as_ref().len());
+            // SAFETY: we are in ⬜!
+            let b = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
+            // SAFETY: should work
+            unsafe { self.write(b, o_x) };
+        }
+        self
     }
 }
 
