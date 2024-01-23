@@ -10,16 +10,17 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// ```
     #[must_use = "function does not modify the original image"]
     pub fn flip_v(&self) -> Image<Vec<u8>, CHANNELS> {
-        let mut out = self.alloc();
+        let mut out = self.uninit();
         for y in 0..self.height() {
             for x in 0..self.width() {
                 // SAFETY: looping over self, all ok (could be safe versions, bounds would be elided)
                 let p = unsafe { self.pixel(x, y) };
                 // SAFETY: looping over self.
-                unsafe { out.set_pixel(x, self.height() - y - 1, p) };
+                unsafe { out.write(&p, (x, self.height() - y - 1)) };
             }
         }
-        out
+        // SAFETY: init
+        unsafe { out.assume_init() }
     }
 
     /// Flip an image horizontally
@@ -30,16 +31,17 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// ```
     #[must_use = "function does not modify the original image"]
     pub fn flip_h(&self) -> Image<Vec<u8>, CHANNELS> {
-        let mut out = self.alloc();
+        let mut out = self.uninit();
         for y in 0..self.height() {
             for x in 0..self.width() {
                 // SAFETY: looping over self, all ok
                 let p = unsafe { self.pixel(x, y) };
                 // SAFETY: looping over self, all ok
-                unsafe { out.set_pixel(self.width() - x - 1, y, p) };
+                unsafe { out.write(&p, (self.width() - x - 1, y)) };
             }
         }
-        out
+        // SAFETY: init
+        unsafe { out.assume_init() }
     }
 }
 

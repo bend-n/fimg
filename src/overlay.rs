@@ -160,7 +160,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Im
     #[inline]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         // SAFETY: caller upholds this
-        unsafe { assert_unchecked!(x + with.width() <= self.width()) };
+        unsafe { assert_unchecked(x + with.width() <= self.width()) };
         debug_assert!(y + with.height() <= self.height());
         for j in 0..with.height() {
             let i_x = j as usize * with.width() as usize * 4

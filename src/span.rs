@@ -32,3 +32,11 @@ impl Span for Range<(u32, u32)> {
         i.at::<C>(sx, sy)..i.at::<C>(ex, ey)
     }
 }
+
+impl Sealed for (u32, u32) {}
+impl Span for (u32, u32) {
+    #[inline(always)]
+    fn range<const C: usize>(self, i: (u32, u32)) -> Range<usize> {
+        i.at::<C>(self.0, self.1)..i.at::<C>(self.0, self.1) + C
+    }
+}

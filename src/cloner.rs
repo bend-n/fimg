@@ -5,7 +5,7 @@
 //! # let i = Image::<_, 1>::alloc(5, 5);
 //! unsafe { i.cloner().rot_270() };
 //! ```
-use crate::Image;
+use crate::{uninit, Image};
 
 /// A neat way to clone a image.
 ///
@@ -17,6 +17,11 @@ impl<'a, const C: usize> ImageCloner<'a, C> {
     /// duplicate the inner image.
     pub(crate) fn dup(&self) -> Image<Vec<u8>, C> {
         self.0.to_owned()
+    }
+
+    /// create a new uninit image the right size for use
+    pub(crate) fn uninit(&self) -> uninit::Image<u8, C> {
+        uninit::Image::new(self.width, self.height)
     }
 
     /// Create a [`ImageCloner`] from a <code>[Image]<&\[[u8]\]></code>

@@ -1,9 +1,14 @@
 //! the houser of uninitialized memory. €$@!0В𴬔!℡
 //!
 //! contains [`Image`], an uninitialized image.
-use std::{mem::MaybeUninit, num::NonZeroU32};
+use std::{
+    hint::assert_unchecked,
+    mem::MaybeUninit,
+    num::NonZeroU32,
+    ops::{Index, IndexMut},
+};
 
-use crate::CopyWithinUnchecked;
+use crate::{span::Span, CopyWithinUnchecked};
 
 /// A uninitialized image. Be sure to initialize it!
 pub struct Image<T: Copy, const CHANNELS: usize> {
@@ -11,6 +16,14 @@ pub struct Image<T: Copy, const CHANNELS: usize> {
     buffer: Vec<T>,
     width: NonZeroU32,
     height: NonZeroU32,
+}
+
+impl<I: Span, T: Copy, const C: usize> Index<I> for Image<T, C> {
+    type Output = [T];
+
+    fn index(&self, index: I) -> &Self::Output {
+        &self.buffer()[index.range::<C>((self.width(), self.height()))]
+    }
 }
 
 impl<T: Copy, const CHANNELS: usize> Image<T, CHANNELS> {
@@ -27,11 +40,23 @@ impl<T: Copy, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// # Safety
     /// index must be in bounds.
-    pub unsafe fn write(&mut self, data: &[T], i: impl crate::span::Span) {
-        let range = i.range::<CHANNELS>((self.width(), self.height()));
-        // SAFETY: write
-        let dat = unsafe { self.buf().get_unchecked_mut(range) };
+    /// data and indexed range must have same len.
+    pub unsafe fn write(&mut self, data: &[T], i: impl Span) {
+        // SAFETY: caller
+        let dat = unsafe { self.slice(i) };
+        // SAFETY: caller
+        unsafe { assert_unchecked(dat.len() == data.len()) };
         MaybeUninit::write_slice(dat, data);
+    }
+
+    /// Slice the image.
+    ///
+    /// # Safety
+    /// index must be in bounds.
+    pub unsafe fn slice(&mut self, i: impl Span) -> &mut [MaybeUninit<T>] {
+        let range = i.range::<CHANNELS>((self.width(), self.height()));
+        // SAFETY: assured
+        unsafe { self.buf().get_unchecked_mut(range) }
     }
 
     /// Copy a range to a position.
@@ -39,7 +64,7 @@ impl<T: Copy, const CHANNELS: usize> Image<T, CHANNELS> {
     /// # Safety
     ///
     /// both parts must be in bounds.
-    pub unsafe fn copy_within(&mut self, i: impl crate::span::Span, to: usize) {
+    pub unsafe fn copy_within(&mut self, i: impl Span, to: usize) {
         let range = i.range::<CHANNELS>((self.width(), self.height()));
         // SAFETY: copy!
         unsafe { self.buf().copy_within_unchecked(range, to) };

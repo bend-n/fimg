@@ -49,6 +49,7 @@
 //! - `default`: \[`save`, `scale`\].
 #![feature(
     maybe_uninit_write_slice,
+    hint_assert_unchecked,
     slice_swap_unchecked,
     generic_const_exprs,
     slice_as_chunks,
@@ -72,7 +73,7 @@
     missing_docs
 )]
 #![allow(clippy::zero_prefixed_literal, incomplete_features)]
-use std::{num::NonZeroU32, ops::Range};
+use std::{hint::assert_unchecked, num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
@@ -121,25 +122,6 @@ impl<T> CopyWithinUnchecked for [T] {
         };
     }
 }
-
-/// like assert!(), but causes undefined behaviour at runtime when the condition is not met.
-///
-/// # Safety
-///
-/// UB if condition is false.
-macro_rules! assert_unchecked {
-    ($cond:expr) => {{
-        if !$cond {
-            #[cfg(debug_assertions)]
-            let _ = ::core::ptr::NonNull::<()>::dangling().as_ref(); // force unsafe wrapping block
-            #[cfg(debug_assertions)]
-            panic!("assertion failed: {} returned false", stringify!($cond));
-            #[cfg(not(debug_assertions))]
-            std::hint::unreachable_unchecked()
-        }
-    }};
-}
-use assert_unchecked;
 
 trait At {
     fn at<const C: usize>(self, x: u32, y: u32) -> usize;
@@ -455,9 +437,9 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         T: AsRef<[U]>,
     {
         // SAFETY: 0 sized images illegal
-        unsafe { assert_unchecked!(self.len() > CHANNELS) };
+        unsafe { assert_unchecked(self.len() > CHANNELS) };
         // SAFETY: no half pixels!
-        unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
+        unsafe { assert_unchecked(self.len() % CHANNELS == 0) };
         self.buffer().as_ref().array_chunks::<CHANNELS>()
     }
 
@@ -546,9 +528,9 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Returns a iterator over every pixel, mutably
     pub fn chunked_mut(&mut self) -> impl Iterator<Item = &mut [u8; CHANNELS]> {
         // SAFETY: 0 sized images are not allowed
-        unsafe { assert_unchecked!(self.len() > CHANNELS) };
+        unsafe { assert_unchecked(self.len() > CHANNELS) };
         // SAFETY: buffer cannot have half pixels
-        unsafe { assert_unchecked!(self.len() % CHANNELS == 0) };
+        unsafe { assert_unchecked(self.len() % CHANNELS == 0) };
         self.buffer.as_mut().array_chunks_mut::<CHANNELS>()
     }
 
