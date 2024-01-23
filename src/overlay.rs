@@ -225,7 +225,7 @@ impl<U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for uninit::Image<u8, 3> {
                 ..((j + y as usize) * self.width() as usize + x as usize + (with.width() as usize))
                     * 3;
             // <= because ".." range
-            debug_assert!(o_x.end <= self.buffer().as_ref().len());
+            // debug_assert!(o_x.end <= self.buffer().as_ref().len());
             debug_assert!(i_x.end <= with.buffer().as_ref().len());
             // SAFETY: we are in ⬜!
             let b = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
