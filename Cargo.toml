@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.34"
+version = "0.4.36"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -23,6 +23,7 @@ minifb = { version = "0.25.0", default-features = false, features = [
     "x11",
     "wayland",
 ], optional = true }
+wgpu = { version = "0.19.1", default-features = false, optional = true }
 
 [dev-dependencies]
 iai = { git = "https://github.com/bend-n/iai.git" }
@@ -59,6 +60,7 @@ text = ["fontdue"]
 blur = ["slur"]
 real-show = ["minifb", "text"]
 default = ["save", "scale"]
+wgpu-convert = ["dep:wgpu"]
 
 [profile.release]
 debug = 2

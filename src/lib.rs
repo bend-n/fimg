@@ -92,6 +92,8 @@ mod pack;
 mod span;
 mod sub;
 pub mod uninit;
+#[cfg(feature = "wgpu-convert")]
+mod wgpu_convert;
 pub use pack::Pack;
 pub mod pixels;
 #[cfg(feature = "scale")]
