@@ -1,6 +1,5 @@
 //! provides From's for pixels.
-
-use super::{Push, Trunc};
+use atools::prelude::*;
 
 /// Converts a pixel to another pixel.
 pub trait PFrom<const N: usize> {
@@ -38,19 +37,19 @@ impl PFrom<4> for Y {
 pub type YA = [u8; 2];
 impl PFrom<1> for YA {
     fn pfrom(f: Y) -> Self {
-        f.and(255)
+        f.join(255)
     }
 }
 
 impl PFrom<3> for YA {
     fn pfrom(f: RGB) -> Self {
-        Y::pfrom(f).and(255)
+        Y::pfrom(f).join(255)
     }
 }
 
 impl PFrom<4> for YA {
     fn pfrom(f: RGBA) -> Self {
-        Y::pfrom(f.trunc()).and(255)
+        Y::pfrom(f.trunc()).join(255)
     }
 }
 
@@ -80,18 +79,18 @@ pub type RGBA = [u8; 4];
 
 impl PFrom<1> for RGBA {
     fn pfrom([y]: Y) -> Self {
-        [y; 3].and(255)
+        [y; 3].join(255)
     }
 }
 
 impl PFrom<2> for RGBA {
     fn pfrom([y, a]: YA) -> Self {
-        [y; 3].and(a)
+        [y; 3].join(a)
     }
 }
 
 impl PFrom<3> for RGBA {
     fn pfrom(f: [u8; 3]) -> Self {
-        f.and(255)
+        f.join(255)
     }
 }

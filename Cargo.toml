@@ -24,6 +24,7 @@ minifb = { version = "0.25.0", default-features = false, features = [
     "wayland",
 ], optional = true }
 wgpu = { version = "0.19.1", default-features = false, optional = true }
+atools = "0.1.0"
 
 [dev-dependencies]
 iai = { git = "https://github.com/bend-n/iai.git" }

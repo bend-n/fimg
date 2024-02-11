@@ -37,7 +37,7 @@ impl<T: AsRef<[u8]>> Image<T, 4> {
 }
 
 impl Image<Box<[u8]>, 4> {
-    /// Downlodas a purportedly [`TextureFormat::Rgba8Unorm`] image from the gpu.
+    /// Downloads a purportedly [`TextureFormat::Rgba8Unorm`] image from the gpu.
     /// # Panics
     ///
     /// When a "error occurs while trying to async map a buffer".

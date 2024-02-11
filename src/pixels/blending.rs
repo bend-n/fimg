@@ -1,5 +1,6 @@
 //! module for pixel blending ops
-use super::{convert::PFrom, unfloat, Floatify, PMap, Trunc, Unfloatify};
+use super::{convert::PFrom, unfloat, Floatify, Unfloatify};
+use atools::prelude::*;
 use umath::FF32;
 
 /// Trait for blending pixels together.
@@ -26,9 +27,8 @@ impl Blend<4> for [u8; 4] {
         self[..3].copy_from_slice(
             &fg.trunc()
                 // SAFETY: no u8 can possibly become INF / NAN
-                .pmap(bg.trunc(), |f, b| unsafe {
-                    (f * fg[3] + b * bg[3] * (FF32::new(1.0) - fg[3])) / a
-                })
+                .zip(bg.trunc())
+                .map(|(f, b)| unsafe { (f * fg[3] + b * bg[3] * (FF32::new(1.0) - fg[3])) / a })
                 .unfloat(),
         );
         self[3] = unfloat(a);

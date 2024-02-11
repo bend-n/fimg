@@ -109,7 +109,7 @@ trait CopyWithinUnchecked {
     ///
     /// panicless version of [`[T]::copy_within`](`slice::copy_within`), where the slices cant overlap. this uses `memcpy`.
     /// your slices must be in bounds.
-    /// this isnt a public function, so im not going to say exactly what "in bounds" meeans.
+    /// this isnt a public function, so im not going to say exactly what "in bounds" means.
     unsafe fn copy_within_unchecked(&mut self, src: Range<usize>, dest: usize);
 }
 
