@@ -97,7 +97,7 @@ impl Image<Box<[u8]>, 4> {
             .chunks_exact(pad)
             .zip(out.buf().chunks_exact_mut(row))
         {
-            ::core::mem::MaybeUninit::write_slice(pixels, &padded[..row]);
+            ::core::mem::MaybeUninit::copy_from_slice(pixels, &padded[..row]);
         }
 
         unsafe { out.assume_init().boxed() }

@@ -47,15 +47,19 @@
 //! - `real-show`: [`Image::show`], if the `save` feature is enabled, will, by default, simply open the appropriate image viewing program.
 //! if, for some reason, this is inadequate/you dont have a good image viewer, enable the `real-show` feature to make [`Image::show`] open up a window of its own.
 //! without the `real-show` feature, [`Image::show`] will save itself to your temp directory, which you may not want.
+//! - `term`: [`term::print`]. this enables printing images directly to the terminal, if you don't want to open a window or something. supports `{iterm2, kitty, sixel, fallback}` graphics.
 //! - `default`: \[`save`, `scale`\].
 #![feature(
     maybe_uninit_write_slice,
     hint_assert_unchecked,
     slice_swap_unchecked,
     generic_const_exprs,
+    iter_array_chunks,
+    split_at_checked,
     slice_as_chunks,
     unchecked_math,
     slice_flatten,
+    rustc_private,
     portable_simd,
     array_windows,
     doc_auto_cfg,
@@ -73,7 +77,12 @@
     clippy::use_self,
     missing_docs
 )]
-#![allow(clippy::zero_prefixed_literal, incomplete_features)]
+#![allow(
+    clippy::zero_prefixed_literal,
+    mixed_script_confusables,
+    incomplete_features,
+    confusable_idents
+)]
 use std::{hint::assert_unchecked, num::NonZeroU32, ops::Range};
 
 mod affine;
@@ -100,6 +109,8 @@ pub mod pixels;
 pub mod scale;
 #[cfg(any(feature = "save", feature = "real-show"))]
 mod show;
+#[cfg(feature = "term")]
+pub mod term;
 pub use cloner::ImageCloner;
 pub use overlay::{BlendingOverlay, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};
 pub use r#dyn::DynImage;
@@ -600,18 +611,23 @@ impl<const CHANNELS: usize, T: ?Sized> Image<Box<T>, CHANNELS> {
     }
 }
 
+#[cfg(feature = "save")]
+/// Write a png image.
+pub trait WritePng {
+    /// Write this png image.
+    fn write(&self, f: &mut impl std::io::Write) -> std::io::Result<()>;
+}
+
 /// helper macro for defining the save() method.
 macro_rules! save {
     ($channels:literal == $clr:ident ($clrhuman:literal)) => {
-        impl<T: AsRef<[u8]>> Image<T, $channels> {
-            #[cfg(feature = "save")]
+        #[cfg(feature = "save")]
+        impl<T: AsRef<[u8]>> WritePng for Image<T, $channels> {
             #[doc = "Save this "]
             #[doc = $clrhuman]
             #[doc = " image."]
-            pub fn save(&self, f: impl AsRef<std::path::Path>) {
-                let p = std::fs::File::create(f).unwrap();
-                let w = &mut std::io::BufWriter::new(p);
-                let mut enc = png::Encoder::new(w, self.width(), self.height());
+            fn write(&self, f: &mut impl std::io::Write) -> std::io::Result<()> {
+                let mut enc = png::Encoder::new(f, self.width(), self.height());
                 enc.set_color(png::ColorType::$clr);
                 enc.set_depth(png::BitDepth::Eight);
                 enc.set_source_gamma(png::ScaledFloat::new(1.0 / 2.2));
@@ -621,8 +637,21 @@ macro_rules! save {
                     (0.30000, 0.60000),
                     (0.15000, 0.06000),
                 ));
-                let mut writer = enc.write_header().unwrap();
-                writer.write_image_data(self.bytes()).unwrap();
+                let mut writer = enc.write_header()?;
+                writer.write_image_data(self.bytes())?;
+                Ok(())
+            }
+        }
+        impl<T: AsRef<[u8]>> Image<T, $channels> {
+            #[cfg(feature = "save")]
+            #[doc = "Save this "]
+            #[doc = $clrhuman]
+            #[doc = " image."]
+            pub fn save(&self, f: impl AsRef<std::path::Path>) {
+                self.write(&mut std::io::BufWriter::new(
+                    std::fs::File::create(f).unwrap(),
+                ))
+                .unwrap();
             }
         }
     };
