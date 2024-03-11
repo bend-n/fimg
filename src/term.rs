@@ -60,6 +60,17 @@ impl<'a, const N: usize> std::ops::Deref for Display<'a, N> {
     }
 }
 
+impl<'a, const N: usize> std::fmt::Debug for Display<'a, N>
+where
+    [u8; 3]: PFrom<N>,
+    [u8; 4]: PFrom<N>,
+    Image<&'a [u8], N>: kitty::Data + WritePng,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
+        self.write(f)
+    }
+}
+
 impl<'a, const N: usize> std::fmt::Display for Display<'a, N>
 where
     [u8; 4]: PFrom<N>,
