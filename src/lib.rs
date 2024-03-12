@@ -57,6 +57,7 @@
     generic_const_exprs,
     iter_array_chunks,
     split_at_checked,
+    core_intrinsics,
     slice_as_chunks,
     unchecked_math,
     slice_flatten,
@@ -82,7 +83,8 @@
     clippy::zero_prefixed_literal,
     mixed_script_confusables,
     incomplete_features,
-    confusable_idents
+    confusable_idents,
+    internal_features
 )]
 use std::{hint::assert_unchecked, num::NonZeroU32, ops::Range};
 
@@ -208,6 +210,7 @@ impl Image<&[u8], 3> {
 
 /// A image with a variable number of channels, and a nonzero size.
 #[derive(Debug, PartialEq, Eq)]
+#[repr(C)]
 pub struct Image<T, const CHANNELS: usize> {
     /// column order 2d slice/vec
     buffer: T,

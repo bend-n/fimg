@@ -12,23 +12,34 @@ mod bloc;
 mod kitty;
 mod sixel;
 mod size;
+use crate::Image;
 pub use bloc::Bloc;
 pub use iterm2::Iterm2;
 pub use kitty::Kitty;
 pub use sixel::Sixel;
 use std::fmt::{Result, Write};
 
-use crate::{pixels::convert::PFrom, Image, WritePng};
+mod seal {
+    pub trait Sealed {}
+}
+use seal::Sealed;
+#[doc(hidden)]
+pub trait Basic: Sealed {}
+impl Sealed for [(); 1] {}
+impl Basic for [(); 1] {}
+impl Sealed for [(); 2] {}
+impl Basic for [(); 2] {}
+impl Sealed for [(); 3] {}
+impl Basic for [(); 3] {}
+impl Sealed for [(); 4] {}
+impl Basic for [(); 4] {}
 
 mod b64;
 mod iterm2;
 
 impl<'a, const N: usize> std::fmt::Display for Image<&'a [u8], N>
 where
-    [u8; 3]: PFrom<N>,
-    [u8; 4]: PFrom<N>,
-    Image<&'a [u8], N>: kitty::Data + WritePng,
-    Image<&'a [u8], N>: bloc::Scaled<N>,
+    [(); N]: Basic,
 {
     /// Display an image in the terminal.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
@@ -39,12 +50,10 @@ where
 /// Print an image in the terminal.
 ///
 /// This is a wrapper for `print!("{}", term::Display(image))`
-pub fn print<'a, const N: usize>(i: Image<&'a [u8], N>)
+pub fn print<T: AsRef<[u8]>, const N: usize>(i: Image<T, N>)
 where
-    [u8; 3]: PFrom<N>,
-    [u8; 4]: PFrom<N>,
-    Image<&'a [u8], N>: bloc::Scaled<N>,
-    Image<&'a [u8], N>: kitty::Data + WritePng,
+    [(); N]: Basic,
+    Display<Image<T, N>>: std::fmt::Display,
 {
     print!("{}", Display(i))
 }
@@ -52,75 +61,59 @@ where
 #[derive(Copy, Clone)]
 /// Display an image in the terminal.
 /// This type implements [`Display`](std::fmt::Display) and [`Debug`](std::fmt::Debug).
-pub struct Display<'a, const N: usize>(pub Image<&'a [u8], N>);
+pub struct Display<T>(pub T);
 
-impl<'a, const N: usize> std::ops::Deref for Display<'a, N> {
-    type Target = Image<&'a [u8], N>;
+impl<T> std::ops::Deref for Display<T> {
+    type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<'a, const N: usize> std::fmt::Debug for Display<'a, N>
+impl<T: AsRef<[u8]>, const N: usize> std::fmt::Debug for Display<Image<T, N>>
 where
-    [u8; 3]: PFrom<N>,
-    [u8; 4]: PFrom<N>,
-    Image<&'a [u8], N>: bloc::Scaled<N>,
-    Image<&'a [u8], N>: kitty::Data + WritePng,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
-        self.write(f)
+        Display(self.as_ref()).write(f)
     }
 }
 
-impl<'a, const N: usize> std::fmt::Display for Display<'a, N>
+impl<const N: usize> Display<Image<&[u8], N>>
 where
-    Image<&'a [u8], N>: bloc::Scaled<N>,
-    [u8; 4]: PFrom<N>,
-    [u8; 3]: PFrom<N>,
-    Image<&'a [u8], N>: kitty::Data + WritePng,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.write(f)
-    }
-}
-
-impl<'a, const N: usize> Display<'a, N>
-where
-    [u8; 4]: PFrom<N>,
-    [u8; 3]: PFrom<N>,
-    Image<&'a [u8], N>: bloc::Scaled<N>,
-    Image<&'a [u8], N>: kitty::Data + WritePng,
+    [(); N]: Basic,
 {
     /// Write $TERM protocol encoded image data.
     pub fn write(self, f: &mut impl Write) -> Result {
         if let Ok(term) = std::env::var("TERM") {
             match &*term {
-                "mlterm" | "yaft-256color" => return Sixel(*self).write(f),
-                x if x.contains("kitty") => return Kitty(*self).write(f),
+                "mlterm" | "yaft-256color" => return Sixel(self.0).write(f),
+                x if x.contains("kitty") => return Kitty(self.0).write(f),
                 _ => (),
             }
         }
         if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
             match &*term_program {
-                "MacTerm" => return Sixel(*self).write(f),
-                "iTerm" | "WezTerm" => return Iterm2(*self).write(f),
+                "MacTerm" => return Sixel(self.0).write(f),
+                "iTerm" | "WezTerm" => return Iterm2(self.0).write(f),
                 _ => (),
             }
         }
         if let Ok("iTerm") = std::env::var("LC_TERMINAL").as_deref() {
-            return Iterm2(*self).write(f);
+            return Iterm2(self.0).write(f);
         }
         #[cfg(unix)]
-        return self.guess_harder(f).unwrap_or_else(|| Bloc(*self).write(f));
+        return self
+            .guess_harder(f)
+            .unwrap_or_else(|| Bloc(self.0).write(f));
         #[cfg(not(unix))]
         return Bloc(*self).write(f);
     }
 
     #[cfg(unix)]
     // https://github.com/benjajaja/ratatui-image/blob/master/src/picker.rs#L226
-    fn guess_harder(self, to: &mut impl Write) -> Option<Result> {
+    fn guess_harder(&self, to: &mut impl Write) -> Option<Result> {
         extern crate libc;
         use std::{io::Read, mem::MaybeUninit};
 
@@ -171,13 +164,13 @@ where
         unsafe { libc::tcsetattr(0, libc::TCSADRAIN, &termios) };
 
         if buf.contains("_Gi=31;OK") {
-            Some(Kitty(*self).write(to))
+            Some(Kitty(self.as_ref()).write(to))
         } else if buf.contains(";4;")
             || buf.contains("?4;")
             || buf.contains(";4c")
             || buf.contains("?4c")
         {
-            Some(Sixel(*self).write(to))
+            Some(Sixel(self.as_ref()).write(to))
         } else {
             None
         }

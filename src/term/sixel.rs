@@ -1,6 +1,9 @@
+use core::intrinsics::transmute_unchecked as transmute;
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 
 use crate::{pixels::convert::PFrom, Image};
+
+use super::Basic;
 
 /// Outputs [sixel](https://en.wikipedia.org/wiki/Sixel) encoded data in its [`Display`] and [`Debug`] implementations, for easy visual debugging.
 pub struct Sixel<T: AsRef<[u8]>, const N: usize>(pub Image<T, N>);
@@ -15,7 +18,7 @@ impl<T: AsRef<[u8]>, const N: usize> std::ops::Deref for Sixel<T, N> {
 
 impl<T: AsRef<[u8]>, const N: usize> Display for Sixel<T, N>
 where
-    [u8; 4]: PFrom<N>,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f)
@@ -24,7 +27,7 @@ where
 
 impl<T: AsRef<[u8]>, const N: usize> Debug for Sixel<T, N>
 where
-    [u8; 4]: PFrom<N>,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f)
@@ -35,7 +38,7 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
     /// Write out sixel data.
     pub fn write(&self, to: &mut impl Write) -> Result
     where
-        [u8; 4]: PFrom<N>,
+        [(); N]: Basic,
     {
         to.write_str("Pq")?;
         write!(to, r#""1;1;{};{}"#, self.width(), self.height())?;
@@ -47,7 +50,15 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
             buf = self
                 .chunked()
                 .copied()
-                .map(<[u8; 4] as PFrom<N>>::pfrom)
+                // SAFETY: #[allow(clippy::undocumented_unsafe_blocks)]
+                .map(|x| unsafe {
+                    match N {
+                        1 => <[u8; 4] as PFrom<1>>::pfrom(transmute(x)),
+                        2 => <[u8; 4] as PFrom<2>>::pfrom(transmute(x)),
+                        3 => <[u8; 4] as PFrom<3>>::pfrom(transmute(x)),
+                        _ => unreachable!(),
+                    }
+                })
                 .collect::<Vec<_>>();
             &*buf
         };

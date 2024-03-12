@@ -1,5 +1,6 @@
-use super::b64;
+use super::{b64, Basic};
 use crate::Image;
+use core::intrinsics::transmute_unchecked as transmute;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 
@@ -16,7 +17,7 @@ impl<T: AsRef<[u8]>, const N: usize> std::ops::Deref for Kitty<T, N> {
 
 impl<T: AsRef<[u8]>, const N: usize> Display for Kitty<T, N>
 where
-    Image<T, N>: Data,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f)
@@ -25,52 +26,43 @@ where
 
 impl<T: AsRef<[u8]>, const N: usize> Debug for Kitty<T, N>
 where
-    Image<T, N>: Data,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f)
     }
 }
 
-mod seal {
-    pub trait Sealed {}
-}
-use seal::Sealed;
-
-pub trait Data: Sealed {
-    #[doc(hidden)]
-    fn get(&self) -> (Cow<[u8]>, &'static str);
-}
-macro_rules! imp {
-    ($n:literal, $f:expr) => {
-        impl<T: AsRef<[u8]>> Sealed for Image<T, $n> {}
-        impl<T: AsRef<[u8]>> Data for Image<T, $n> {
-            fn get(&self) -> (Cow<[u8]>, &'static str) {
-                const fn castor<
-                    T: AsRef<[u8]>,
-                    F: FnMut(&Image<T, $n>) -> (Cow<[u8]>, &'static str),
-                >(
-                    f: F,
-                ) -> F {
-                    f
-                }
-                castor($f)(self)
-            }
-        }
-    };
-}
-imp! { 4, |x| (Cow::from(x.bytes()), "32") }
-imp! { 3, |x| (Cow::from(x.bytes()), "24") }
-imp! { 2, |x| (Cow::Owned(<Image<Box<[u8]>, 3>>::from(x.as_ref()).take_buffer().to_vec()), "24") }
-imp! { 1, |x| (Cow::Owned(<Image<Box<[u8]>, 3>>::from(x.as_ref()).take_buffer().to_vec()), "24") }
-
 impl<T: AsRef<[u8]>, const N: usize> Kitty<T, N> {
     /// Write out kitty gfx data.
     pub fn write(&self, to: &mut impl Write) -> Result
     where
-        Image<T, N>: Data,
+        [(); N]: Basic,
     {
-        let (bytes, dtype) = self.get();
+        macro_rules! cast {
+            ($n:literal) => {
+                (
+                    Cow::Owned(
+                        <Image<Box<[u8]>, 3>>::from({
+                            // SAFETY: ...
+                            unsafe { transmute::<Image<&[u8], N>, Image<&[u8], $n>>(self.as_ref()) }
+                        })
+                        .take_buffer()
+                        .to_vec(),
+                    ),
+                    "24",
+                )
+            };
+        }
+        let (bytes, dtype) = {
+            match N {
+                1 => cast!(1),
+                2 => cast!(2),
+                3 => (Cow::from(self.bytes()), "24"),
+                4 => (Cow::from(self.bytes()), "32"),
+                _ => unreachable!(),
+            }
+        };
         let (w, h) = (self.width(), self.height());
 
         let mut enc = Vec::with_capacity(b64::size(&bytes));

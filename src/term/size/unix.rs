@@ -10,6 +10,7 @@ struct Fd(i32, bool);
 impl Drop for Fd {
     fn drop(&mut self) {
         if self.1 {
+            // SAFETY: #[allow(clippy::undocumented_unsafe_blocks)]
             unsafe { close(self.0) };
         }
     }
@@ -43,7 +44,7 @@ pub fn size() -> Option<(u16, u16)> {
             *File::open("/dev/tty")
                 .map(Fd::new)
                 .unwrap_or(Fd::from(STDIN_FILENO)),
-            TIOCGWINSZ.into(),
+            TIOCGWINSZ,
             size.as_mut_ptr(),
         ) != -1
         {

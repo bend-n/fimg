@@ -1,5 +1,6 @@
-use super::b64;
+use super::{b64, Basic};
 use crate::{Image, WritePng};
+use core::intrinsics::transmute_unchecked as transmute;
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 
 /// Outputs [Iterm2 Inline image protocol](https://iterm2.com/documentation-images.html) encoded data.
@@ -14,7 +15,7 @@ impl<T: AsRef<[u8]>, const N: usize> std::ops::Deref for Iterm2<T, N> {
 
 impl<T: AsRef<[u8]>, const N: usize> Display for Iterm2<T, N>
 where
-    Image<T, N>: WritePng,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f)
@@ -23,7 +24,7 @@ where
 
 impl<T: AsRef<[u8]>, const N: usize> Debug for Iterm2<T, N>
 where
-    Image<T, N>: WritePng,
+    [(); N]: Basic,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.write(f)
@@ -32,12 +33,28 @@ where
 
 impl<T: AsRef<[u8]>, const N: usize> Iterm2<T, N>
 where
-    Image<T, N>: WritePng,
+    [(); N]: Basic,
 {
     /// Write out kitty gfx data.
     pub fn write(&self, to: &mut impl Write) -> Result {
         let mut d = Vec::with_capacity(1024);
-        WritePng::write(&**self, &mut d).unwrap();
+        macro_rules! n {
+            ($n:literal) => {
+                WritePng::write(
+                    // SAFETY: ... i renounce traits
+                    &unsafe { transmute::<Image<&[u8], N>, Image<&[u8], $n>>(self.as_ref()) },
+                    &mut d,
+                )
+                .unwrap()
+            };
+        }
+        match N {
+            1 => n![1],
+            2 => n![2],
+            3 => n![3],
+            4 => n![4],
+            _ => unreachable!(),
+        }
         let mut e = Vec::with_capacity(b64::size(&d));
         b64::encode(&d, &mut e).unwrap();
         writeln!(

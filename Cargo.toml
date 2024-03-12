@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.39"
+version = "0.4.41"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -67,7 +67,7 @@ text = ["fontdue"]
 blur = ["slur"]
 term = ["qwant", "save", "scale", "windows"]
 real-show = ["minifb", "text"]
-default = ["save", "scale", "term"]
+default = ["save", "scale"]
 wgpu-convert = ["dep:wgpu"]
 
 [profile.release]

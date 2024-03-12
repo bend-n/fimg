@@ -40,9 +40,24 @@ macro_rules! e {
 }
 use e;
 
-impl<'a> std::fmt::Display for DynImage<&'a [u8]> {
+#[cfg(feature = "term")]
+impl<T: AsRef<[u8]>> std::fmt::Display for crate::term::Display<DynImage<T>> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        e!(self, |x| crate::term::Display(*x).write(f))
+        e!(&self.0, |x| crate::term::Display(x.as_ref()).write(f))
+    }
+}
+
+#[cfg(feature = "term")]
+impl<T: AsRef<[u8]>> std::fmt::Debug for crate::term::Display<DynImage<T>> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        e!(&self.0, |x| crate::term::Display(x.as_ref()).write(f))
+    }
+}
+
+#[cfg(feature = "term")]
+impl<T: AsRef<[u8]>> std::fmt::Display for DynImage<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        e!(&self, |x| crate::term::Display(x.as_ref()).write(f))
     }
 }
 
