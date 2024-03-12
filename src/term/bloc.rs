@@ -1,4 +1,4 @@
-use crate::{pixels::convert::PFrom, Image};
+use crate::{pixels::convert::PFrom, scale, term::size::fit, Image};
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 
 /// Colored `▀`s. The simple, stupid solution.
@@ -14,6 +14,7 @@ impl<T: AsRef<[u8]>, const N: usize> std::ops::Deref for Bloc<T, N> {
 
 impl<T: AsRef<[u8]>, const N: usize> Display for Bloc<T, N>
 where
+    Image<T, N>: Scaled<N>,
     [u8; 3]: PFrom<N>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
@@ -23,6 +24,7 @@ where
 
 impl<T: AsRef<[u8]>, const N: usize> Debug for Bloc<T, N>
 where
+    Image<T, N>: Scaled<N>,
     [u8; 3]: PFrom<N>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
@@ -30,9 +32,36 @@ where
     }
 }
 
+#[doc(hidden)]
+pub trait Scaled<const N: usize> {
+    fn scaled(&self, to: (u32, u32)) -> Image<Box<[u8]>, N>;
+}
+
+macro_rules! n {
+    ($n:literal) => {
+        impl<T: AsRef<[u8]>> Scaled<$n> for Image<T, $n> {
+            fn scaled(&self, (w, h): (u32, u32)) -> Image<Box<[u8]>, $n> {
+                self.scale::<scale::Nearest>(w, h)
+            }
+        }
+    };
+    (o $n:literal) => {
+        impl<T: AsRef<[u8]>> Scaled<$n> for Image<T, $n> {
+            fn scaled(&self, (w, h): (u32, u32)) -> Image<Box<[u8]>, $n> {
+                self.as_ref().to_owned().scale::<scale::Nearest>(w, h)
+            }
+        }
+    };
+}
+n!(1);
+n!(o 2);
+n!(3);
+n!(o 4);
+
 impl<T: AsRef<[u8]>, const N: usize> Bloc<T, N>
 where
     [u8; 3]: PFrom<N>,
+    Image<T, N>: Scaled<N>,
 {
     /// Write out halfblocks.
     pub fn write(&self, to: &mut impl Write) -> Result {
@@ -43,10 +72,17 @@ where
                 write!(to, "\x1b[38;2;{fr};{fg};{fb};48;2;{br};{bg};{bb}m▀")?;
             }};
         }
-        // TODO: scale 2 fit
-        for [a, b] in self
+        let buf;
+        let i = if !cfg!(test) {
+            buf = self.scaled(fit((self.width(), self.height())));
+            buf.as_ref()
+        } else {
+            self.as_ref()
+        };
+
+        for [a, b] in i
             .flatten()
-            .chunks_exact(self.width() as _)
+            .chunks_exact(i.width() as _)
             .map(|x| x.iter().copied().map(<[u8; 3] as PFrom<N>>::pfrom))
             .array_chunks::<2>()
         {

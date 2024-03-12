@@ -49,6 +49,7 @@
 //! without the `real-show` feature, [`Image::show`] will save itself to your temp directory, which you may not want.
 //! - `term`: [`term::print`]. this enables printing images directly to the terminal, if you don't want to open a window or something. supports `{iterm2, kitty, sixel, fallback}` graphics.
 //! - `default`: \[`save`, `scale`\].
+#![cfg_attr(all(feature = "term", windows), windows_subsystem = "console")]
 #![feature(
     maybe_uninit_write_slice,
     hint_assert_unchecked,

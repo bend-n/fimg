@@ -40,6 +40,12 @@ macro_rules! e {
 }
 use e;
 
+impl<'a> std::fmt::Display for DynImage<&'a [u8]> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        e!(self, |x| crate::term::Display(*x).write(f))
+    }
+}
+
 impl<T> DynImage<T> {
     /// Get the width of this image.
     pub const fn width(&self) -> u32 {

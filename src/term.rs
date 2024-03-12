@@ -11,7 +11,7 @@
 mod bloc;
 mod kitty;
 mod sixel;
-
+mod size;
 pub use bloc::Bloc;
 pub use iterm2::Iterm2;
 pub use kitty::Kitty;
@@ -28,6 +28,7 @@ where
     [u8; 3]: PFrom<N>,
     [u8; 4]: PFrom<N>,
     Image<&'a [u8], N>: kitty::Data + WritePng,
+    Image<&'a [u8], N>: bloc::Scaled<N>,
 {
     /// Display an image in the terminal.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
@@ -42,6 +43,7 @@ pub fn print<'a, const N: usize>(i: Image<&'a [u8], N>)
 where
     [u8; 3]: PFrom<N>,
     [u8; 4]: PFrom<N>,
+    Image<&'a [u8], N>: bloc::Scaled<N>,
     Image<&'a [u8], N>: kitty::Data + WritePng,
 {
     print!("{}", Display(i))
@@ -64,6 +66,7 @@ impl<'a, const N: usize> std::fmt::Debug for Display<'a, N>
 where
     [u8; 3]: PFrom<N>,
     [u8; 4]: PFrom<N>,
+    Image<&'a [u8], N>: bloc::Scaled<N>,
     Image<&'a [u8], N>: kitty::Data + WritePng,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
@@ -73,6 +76,7 @@ where
 
 impl<'a, const N: usize> std::fmt::Display for Display<'a, N>
 where
+    Image<&'a [u8], N>: bloc::Scaled<N>,
     [u8; 4]: PFrom<N>,
     [u8; 3]: PFrom<N>,
     Image<&'a [u8], N>: kitty::Data + WritePng,
@@ -86,6 +90,7 @@ impl<'a, const N: usize> Display<'a, N>
 where
     [u8; 4]: PFrom<N>,
     [u8; 3]: PFrom<N>,
+    Image<&'a [u8], N>: bloc::Scaled<N>,
     Image<&'a [u8], N>: kitty::Data + WritePng,
 {
     /// Write $TERM protocol encoded image data.
