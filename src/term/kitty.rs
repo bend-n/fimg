@@ -65,9 +65,9 @@ impl<T: AsRef<[u8]>, const N: usize> Kitty<T, N> {
         };
         let (w, h) = (self.width(), self.height());
 
-        let mut enc = Vec::with_capacity(b64::size(&bytes));
-        b64::encode(&bytes, &mut enc).unwrap();
+        let enc = b64::encode(&bytes);
         let mut chunks = enc
+            .as_bytes()
             .chunks(4096)
             // SAFETY: b64
             .map(|x| unsafe { std::str::from_utf8_unchecked(x) });

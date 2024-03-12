@@ -55,14 +55,11 @@ where
             4 => n![4],
             _ => unreachable!(),
         }
-        let mut e = Vec::with_capacity(b64::size(&d));
-        b64::encode(&d, &mut e).unwrap();
+        let e = b64::encode(&d);
         writeln!(
             to,
-            "]1337;File=inline=1;preserveAspectRatio=1;size={}:{}",
+            "]1337;File=inline=1;preserveAspectRatio=1;size={}:{e}",
             d.len(),
-            // SAFETY: b64
-            unsafe { std::str::from_utf8_unchecked(&e) }
         )?;
         Ok(())
     }

@@ -67,7 +67,8 @@
     doc_auto_cfg,
     const_option,
     array_chunks,
-    let_chains
+    let_chains,
+    test
 )]
 #![warn(
     clippy::undocumented_unsafe_blocks,
