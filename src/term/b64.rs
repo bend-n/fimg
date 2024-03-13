@@ -39,7 +39,7 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     fn cas<U>(self) -> U {
-        assert!(std::mem::size_of::<U>() == std::mem::size_of::<Simd<T, N>>());
+        assert!(std::mem::size_of::<U>() == std::mem::size_of::<Self>());
         unsafe { transmute_unchecked(self) }
     }
 }
@@ -49,7 +49,7 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     fn cas<U>(self) -> U {
-        assert!(std::mem::size_of::<U>() == std::mem::size_of::<Mask<T, N>>());
+        assert!(std::mem::size_of::<U>() == std::mem::size_of::<Self>());
         unsafe { transmute_unchecked(self) }
     }
 }

@@ -40,6 +40,34 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
     where
         [(); N]: Basic,
     {
+        #[cfg(unix)]
+        let q = {
+            extern crate libc;
+            // SAFETY: is stdout a tty
+            (unsafe { libc::isatty(0) } == 1)
+        };
+        #[cfg(not(unix))]
+        let q = true;
+        let colors = q
+            .then_some(super::query("[?1;1;0S").and_then(|x| {
+                // [?1;0;65536S
+                if let [b'?', b'1', b';', b'0', b';', n @ ..] = x.as_bytes() {
+                    Some(
+                        n.iter()
+                            .copied()
+                            .take_while(u8::is_ascii_digit)
+                            .fold(0u16, |acc, x| {
+                                acc.saturating_mul(10).saturating_add((x - b'0') as u16)
+                            })
+                            .max(64)
+                            .min(0xfff),
+                    )
+                } else {
+                    None
+                }
+            }))
+            .flatten()
+            .unwrap_or(255);
         to.write_str("Pq")?;
         write!(to, r#""1;1;{};{}"#, self.width(), self.height())?;
         let buf;
@@ -63,14 +91,15 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
             &*buf
         };
 
-        let q = qwant::NeuQuant::new(15, 255, rgba);
+        let q = qwant::NeuQuant::new(15, colors as _, rgba);
+
         // TODO: don't colllect
-        let pixels: Vec<u8> = rgba.iter().map(|&pix| q.index_of(pix) as u8).collect();
+        let pixels: Vec<u16> = rgba.iter().map(|&pix| q.index_of(pix) as _).collect();
 
         for ([r, g, b], i) in q
             .color_map_rgb()
             .map(|x| x.map(|x| (x as f32 * (100. / 255.)) as u32))
-            .zip(0u8..)
+            .zip(0u64..)
         {
             write!(to, "#{i};2;{r};{g};{b}")?;
         }

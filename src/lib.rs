@@ -68,6 +68,7 @@
     const_option,
     array_chunks,
     let_chains,
+    try_blocks,
     test
 )]
 #![warn(

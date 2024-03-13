@@ -114,55 +114,8 @@ where
     #[cfg(unix)]
     // https://github.com/benjajaja/ratatui-image/blob/master/src/picker.rs#L226
     fn guess_harder(&self, to: &mut impl Write) -> Option<Result> {
-        extern crate libc;
-        use std::{io::Read, mem::MaybeUninit};
-
-        fn r(result: i32) -> Option<()> {
-            (result != -1).then_some(())
-        }
-
-        let mut termios = MaybeUninit::<libc::termios>::uninit();
-        // SAFETY: get termios of stdin
-        r(unsafe { libc::tcgetattr(0, termios.as_mut_ptr()) })?;
-        // SAFETY: gotten
-        let termios = unsafe { termios.assume_init() };
-
-        // SAFETY: turn off echo and canonical (requires enter before stdin reads) modes
-        unsafe {
-            libc::tcsetattr(
-                0,
-                libc::TCSADRAIN,
-                &libc::termios {
-                    c_lflag: termios.c_lflag & !libc::ICANON & !libc::ECHO,
-                    ..termios
-                },
-            )
-        };
-        let buf = {
-            // contains a kitty gfx and sixel query, the `\x1b[c` is for sixels
-            println!(r"_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\[c");
-            let mut stdin = std::io::stdin();
-            let mut buf = String::new();
-
-            let mut b = [0; 16];
-            'l: loop {
-                let n = stdin.read(&mut b).ok()?;
-                if n == 0 {
-                    continue;
-                }
-                for b in b {
-                    buf.push(b as char);
-                    if b == b'c' {
-                        break 'l;
-                    }
-                }
-            }
-            buf
-        };
-
-        // SAFETY: reset attrs to what they were before we became nosy
-        unsafe { libc::tcsetattr(0, libc::TCSADRAIN, &termios) };
-
+        // contains a kitty gfx and sixel query, the `\x1b[c` is for sixels
+        let buf = query(r"_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\[c")?;
         if buf.contains("_Gi=31;OK") {
             Some(Kitty(self.as_ref()).write(to))
         } else if buf.contains(";4;")
@@ -175,4 +128,69 @@ where
             None
         }
     }
+}
+
+#[cfg(unix)]
+// https://github.com/benjajaja/ratatui-image/blob/master/src/picker.rs#L226
+fn query(device_query_code: &'static str) -> Option<String> {
+    extern crate libc;
+    use std::mem::MaybeUninit;
+    fn r(result: i32) -> Option<()> {
+        (result != -1).then_some(())
+    }
+
+    let mut termios = MaybeUninit::<libc::termios>::uninit();
+    // SAFETY: get termios of stdin
+    r(unsafe { libc::tcgetattr(0, termios.as_mut_ptr()) })?;
+    // SAFETY: gotten
+    let termios = unsafe { termios.assume_init() };
+
+    // SAFETY: turn off echo and canonical (requires enter before stdin reads) modes
+    unsafe {
+        libc::tcsetattr(
+            0,
+            libc::TCSADRAIN,
+            &libc::termios {
+                c_lflag: termios.c_lflag & !libc::ICANON & !libc::ECHO,
+                ..termios
+            },
+        )
+    };
+
+    let buf = try {
+        // SAFETY: linux time out'd reading
+        unsafe {
+            println!("{device_query_code}");
+            let mut buf = Vec::new();
+            let mut tmp = [0; 1 << 5];
+            loop {
+                let mut x = std::mem::zeroed::<libc::fd_set>();
+                libc::FD_SET(0, &mut x);
+                match libc::select(
+                    1,
+                    &mut x,
+                    0 as _,
+                    0 as _,
+                    &mut libc::timeval {
+                        tv_sec: 0,
+                        tv_usec: 5e5 as _,
+                    },
+                ) {
+                    0 => break,
+                    -1 => return None,
+                    _ => {}
+                }
+                match libc::read(libc::STDIN_FILENO, tmp.as_mut_ptr().cast(), tmp.len()) {
+                    0 => continue,
+                    -1 => return None,
+                    n => buf.extend_from_slice(&tmp[..n as _]),
+                }
+            }
+            String::from_utf8(buf).ok()?
+        }
+    };
+
+    // SAFETY: reset attrs to what they were before we became nosy
+    unsafe { libc::tcsetattr(0, libc::TCSADRAIN, &termios) };
+    buf
 }
