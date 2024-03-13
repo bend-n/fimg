@@ -44,28 +44,30 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
         let q = {
             extern crate libc;
             // SAFETY: is stdout a tty
-            (unsafe { libc::isatty(0) } == 1)
+            (unsafe { libc::isatty(1) } == 1)
         };
         #[cfg(not(unix))]
         let q = true;
         let colors = q
-            .then_some(super::query("[?1;1;0S").and_then(|x| {
-                // [?1;0;65536S
-                if let [b'?', b'1', b';', b'0', b';', n @ ..] = x.as_bytes() {
-                    Some(
-                        n.iter()
-                            .copied()
-                            .take_while(u8::is_ascii_digit)
-                            .fold(0u16, |acc, x| {
-                                acc.saturating_mul(10).saturating_add((x - b'0') as u16)
-                            })
-                            .max(64)
-                            .min(0xfff),
-                    )
-                } else {
-                    None
-                }
-            }))
+            .then(|| {
+                super::query("[?1;1;0S").and_then(|x| {
+                    // [?1;0;65536S
+                    if let [b'?', b'1', b';', b'0', b';', n @ ..] = x.as_bytes() {
+                        Some(
+                            n.iter()
+                                .copied()
+                                .take_while(u8::is_ascii_digit)
+                                .fold(0u16, |acc, x| {
+                                    acc.saturating_mul(10).saturating_add((x - b'0') as u16)
+                                })
+                                .max(64)
+                                .min(0xfff),
+                        )
+                    } else {
+                        None
+                    }
+                })
+            })
             .flatten()
             .unwrap_or(255);
         to.write_str("Pq")?;
@@ -104,13 +106,10 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
             write!(to, "#{i};2;{r};{g};{b}")?;
         }
         for sixel_row in pixels.chunks_exact(self.width() as usize * 6).map(|x| {
-            let mut x = x
-                .iter()
+            x.iter()
                 .zip(0u32..)
                 .map(|(&p, j)| (p, (j % self.width(), j / self.width())))
-                .collect::<Vec<_>>();
-            x.sort_unstable();
-            x
+                .collect::<Vec<_>>()
         }) {
             // extracted
             for samples in Grouped(&sixel_row, |r| r.0) {
