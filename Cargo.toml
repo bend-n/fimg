@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.41"
+version = "0.4.42"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2021"
@@ -14,19 +14,19 @@ categories = ["multimedia::images", "graphics"]
 mattr = "0.0.2"
 png = { version = "0.17", features = ["unstable"], optional = true }
 fontdue = { version = "0.7.3", optional = true }
-vecto = "0.1.0"
+vecto = "0.1.1"
 umath = "0.0.7"
 fr = { version = "0.1.1", package = "fer", optional = true }
 slur = { version = "0.1.0", optional = true }
-clipline = "0.1.1"
+clipline = "0.1.2"
 minifb = { version = "0.25.0", default-features = false, features = [
     "x11",
     "wayland",
 ], optional = true }
 wgpu = { version = "0.19.1", default-features = false, optional = true }
-atools = "0.1.0"
+atools = "0.1.4"
 qwant = { version = "1.0.0", optional = true }
-libc = "0.2.153"
+libc = "0.2.154"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.53.0", features = [

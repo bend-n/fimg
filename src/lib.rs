@@ -56,10 +56,8 @@
     slice_swap_unchecked,
     generic_const_exprs,
     iter_array_chunks,
-    split_at_checked,
     core_intrinsics,
     slice_as_chunks,
-    unchecked_math,
     slice_flatten,
     rustc_private,
     portable_simd,
@@ -320,6 +318,12 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         // SAFETY: we dont change anything, why check
         unsafe { Image::new(self.width, self.height, f(self.buffer)) }
     }
+
+    /// # Safety
+    /// buffer size must be the same.
+    unsafe fn map_into<U: From<T>, const N: usize>(self) -> Image<U, N> {
+        unsafe { self.mapped(Into::into) }
+    }
 }
 
 impl<const CHANNELS: usize, T: Clone> Image<&[T], CHANNELS> {
@@ -379,7 +383,7 @@ impl<const CHANNELS: usize, const N: usize> Image<[u8; N], CHANNELS> {
     /// Box this array image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
         // SAFETY: size not changed
-        unsafe { self.mapped(|b| b.into()) }
+        unsafe { self.map_into() }
     }
 }
 
@@ -387,7 +391,7 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     /// Box this image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
         // SAFETY: size not changed
-        unsafe { self.mapped(|b| b.into()) }
+        unsafe { self.map_into() }
     }
 }
 
@@ -395,7 +399,15 @@ impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
     /// Box this owned image.
     pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
         // SAFETY: ctor
-        unsafe { self.mapped(|b| b.into()) }
+        unsafe { self.map_into() }
+    }
+}
+
+impl<const CHANNELS: usize> Image<Box<[u8]>, CHANNELS> {
+    /// Unbox this vec image.
+    pub fn unbox(self) -> Image<Vec<u8>, CHANNELS> {
+        // SAFETY: ctor
+        unsafe { self.map_into() }
     }
 }
 
@@ -624,6 +636,16 @@ pub trait WritePng {
     fn write(&self, f: &mut impl std::io::Write) -> std::io::Result<()>;
 }
 
+/// Read png.
+#[cfg(feature = "save")]
+pub trait ReadPng
+where
+    Self: Sized,
+{
+    /// Read a png into an image.
+    fn read(f: &mut impl std::io::Read) -> std::io::Result<Self>;
+}
+
 /// helper macro for defining the save() method.
 macro_rules! save {
     ($channels:literal == $clr:ident ($clrhuman:literal)) => {
@@ -663,34 +685,67 @@ macro_rules! save {
     };
 }
 
-impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
+macro_rules! read {
+    ($n:literal) => {
+        #[cfg(feature = "save")]
+        impl ReadPng for Image<Box<[u8]>, $n> {
+            /// Open a PNG image
+            fn read(f: &mut impl std::io::Read) -> std::io::Result<Self> {
+                use png::Transformations as T;
+                let mut dec = png::Decoder::new(f);
+                match $n {
+                    1 | 3 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
+                    2 | 4 => dec.set_transformations(T::STRIP_16 | T::ALPHA), // alpha implies expand
+                    _ => (),
+                }
+                let mut reader = dec.read_info()?;
+                let mut buf = vec![0; reader.output_buffer_size()].into_boxed_slice();
+                let info = reader.next_frame(&mut buf)?;
+                use png::ColorType::*;
+                macro_rules! n {
+                    ($x:literal) => {
+                        Image::<_, $x>::build(info.width, info.height)
+                            .buf(buf)
+                            .into()
+                    };
+                }
+                Ok(match info.color_type {
+                    Indexed => unreachable!(), // see EXPAND
+                    Grayscale => n![1],
+                    GrayscaleAlpha => n![2],
+                    Rgb => n![3],
+                    Rgba => n![4],
+                })
+            }
+        }
+    };
+}
+impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS>
+where
+    [(); { (CHANNELS <= 4) as usize } - 1]:,
+{
     #[cfg(feature = "save")]
     /// Open a PNG image
     pub fn open(f: impl AsRef<std::path::Path>) -> Self {
-        use png::Transformations as T;
         let p = std::fs::File::open(f).unwrap();
-        let r = std::io::BufReader::new(p);
-        let mut dec = png::Decoder::new(r);
-        match CHANNELS {
-            1 | 3 => dec.set_transformations(T::STRIP_16 | T::EXPAND),
-            2 | 4 => dec.set_transformations(T::STRIP_16 | T::ALPHA),
-            _ => (),
-        }
-        let mut reader = dec.read_info().unwrap();
-        let mut buf = vec![0; reader.output_buffer_size()];
-        let info = reader.next_frame(&mut buf).unwrap();
-        use png::ColorType::*;
-        match info.color_type {
-            Indexed | Grayscale => {
-                assert_eq!(CHANNELS, 1, "indexed | grayscale requires one channel")
+        let r = &mut std::io::BufReader::new(p);
+        use core::intrinsics::transmute_unchecked as t;
+        // SAFETY: ... this is idiotic.
+        unsafe {
+            match CHANNELS {
+                1 => t(Image::<Box<_>, 1>::read(r).unwrap().unbox()),
+                2 => t(Image::<Box<_>, 2>::read(r).unwrap().unbox()),
+                3 => t(Image::<Box<_>, 3>::read(r).unwrap().unbox()),
+                4 => t(Image::<Box<_>, 4>::read(r).unwrap().unbox()),
+                _ => unreachable!(),
             }
-            Rgb => assert_eq!(CHANNELS, 3, "rgb requires three channels"),
-            Rgba => assert_eq!(CHANNELS, 4, "rgba requires four channels"),
-            GrayscaleAlpha => assert_eq!(CHANNELS, 2, "ya requires two channels"),
         }
-        Self::build(info.width, info.height).buf(buf)
     }
 }
+read!(1);
+read!(2);
+read!(3);
+read!(4);
 
 save!(3 == Rgb("RGB"));
 save!(4 == Rgba("RGBA"));

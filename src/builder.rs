@@ -78,6 +78,10 @@ impl<T: Copy, const C: usize> Builder<Box<[T]>, C> {
 /// seals the [`Buffer`] trait
 mod buf {
     /// A valid buffer for use in the builder
+    #[diagnostic::on_unimplemented(
+        message = "this type is not a buffer",
+        note = "if you think this type is a buffer, please open an issue.\nYou can manually circumvent this warning via Image::new."
+    )]
     pub trait Buffer {
         #[doc(hidden)]
         fn len(&self) -> usize;
