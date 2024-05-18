@@ -42,7 +42,7 @@ where
             ($n:literal) => {
                 WritePng::write(
                     // SAFETY: ... i renounce traits
-                    &unsafe { transmute::<Image<&[u8], N>, Image<&[u8], $n>>(self.as_ref()) },
+                    &unsafe { self.as_ref().trans::<$n>() },
                     &mut d,
                 )
                 .unwrap()

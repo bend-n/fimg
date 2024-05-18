@@ -86,7 +86,7 @@
     confusable_idents,
     internal_features
 )]
-use std::{hint::assert_unchecked, num::NonZeroU32, ops::Range};
+use std::{hint::assert_unchecked, intrinsics::transmute_unchecked, num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
@@ -448,6 +448,18 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         self.buffer().as_ref().len()
     }
 
+    /// Transforms the N
+    ///
+    /// # Safety
+    ///
+    /// i think you can see why this is a problem.
+    ///
+    /// # WHY???
+    ///
+    /// sometimes rust is silly with generics
+    unsafe fn trans<const N: usize>(self) -> Image<T, N> {
+        unsafe { transmute_unchecked(self) }
+    }
     /// # Safety
     ///
     /// the output index is not guaranteed to be in bounds

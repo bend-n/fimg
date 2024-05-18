@@ -45,7 +45,7 @@ impl<T: AsRef<[u8]>, const N: usize> Kitty<T, N> {
                     Cow::Owned(
                         <Image<Box<[u8]>, 3>>::from({
                             // SAFETY: ...
-                            unsafe { transmute::<Image<&[u8], N>, Image<&[u8], $n>>(self.as_ref()) }
+                            unsafe { self.as_ref().trans::<$n>() }
                         })
                         .take_buffer()
                         .to_vec(),

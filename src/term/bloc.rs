@@ -50,16 +50,17 @@ where
             let (w, h) = fit((self.width(), self.height()));
             macro_rules! n {
                 ($n:literal) => {
-                    transmute::<Image<Box<[u8]>, $n>, Image<Box<[u8]>, N>>(
-                        transmute::<Image<&[u8], N>, Image<&[u8], $n>>(self.as_ref())
-                            .scale::<scale::Nearest>(w, h),
-                    )
+                    self.as_ref()
+                        .trans::<$n>()
+                        .scale::<scale::Nearest>(w, h)
+                        .trans::<N>()
                 };
                 (o $n:literal) => {
-                    transmute::<Image<Box<[u8]>, 1>, Image<Box<[u8]>, N>>(
-                        transmute::<Image<Vec<u8>, N>, Image<Vec<u8>, 1>>(self.as_ref().to_owned())
-                            .scale::<scale::Nearest>(w, h),
-                    )
+                    self.as_ref()
+                        .to_owned()
+                        .trans::<1>()
+                        .scale::<scale::Nearest>(w, h)
+                        .trans::<N>()
                 };
             }
             // SAFETY: #[allow(clippy::undocumented_unsafe_blocks)]
