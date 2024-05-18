@@ -57,7 +57,7 @@ where
                 };
                 (o $n:literal) => {
                     transmute::<Image<Box<[u8]>, 1>, Image<Box<[u8]>, N>>(
-                        transmute::<Image<Vec<u8>, N>, Image<&[u8], 1>>(self.as_ref().to_owned())
+                        transmute::<Image<Vec<u8>, N>, Image<Vec<u8>, 1>>(self.as_ref().to_owned())
                             .scale::<scale::Nearest>(w, h),
                     )
                 };

@@ -19,8 +19,6 @@ fn b64() {
     t("Hello World", "SGVsbG8gV29ybGQ=");
 }
 
-extern crate test;
-
 pub fn encode(i: &[u8]) -> String {
     let mut x = Vec::with_capacity(size(i));
     unsafe { portable(i, x.as_mut_ptr()) };
