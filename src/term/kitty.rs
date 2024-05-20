@@ -1,6 +1,5 @@
 use super::{b64, Basic};
 use crate::Image;
-use core::intrinsics::transmute_unchecked as transmute;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 

@@ -1,7 +1,7 @@
 use super::{float, unfloat};
 use atools::prelude::*;
 use umath::{generic_float::Constructors, FF32};
-
+#[allow(dead_code)]
 pub trait Wam {
     /// this function weighs the sides and combines
     ///

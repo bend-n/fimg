@@ -552,6 +552,72 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         // SAFETY: slice should always return a valid index
         unsafe { self.buffer.as_mut().get_unchecked_mut(idx) }
     }
+
+    /// iterator over columns
+    /// returned iterator returns a iterator for each column
+    ///
+    /// ```text
+    /// ┌ ┐┌ ┐┌ ┐
+    /// │1││2││3│
+    /// │4││5││6│
+    /// │7││8││9│
+    /// └ ┘└ ┘└ ┘
+    /// ```
+    ///
+    /// ```
+    /// # use fimg::Image;
+    /// let img: Image<&[u8],1> = Image::build(2, 3).buf(&[
+    ///    1, 5,
+    ///    2, 4,
+    ///    7, 9
+    /// ]);
+    /// assert_eq!(
+    ///     img.cols().map(|x| x.collect::<Vec<_>>()).collect::<Vec<_>>(),
+    ///     [[[1], [2], [7]], [[5], [4], [9]]]
+    /// );
+    /// ```
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    pub fn cols<U: Copy>(
+        &self,
+    ) -> impl DoubleEndedIterator
+           + ExactSizeIterator<
+        Item = impl ExactSizeIterator + DoubleEndedIterator<Item = [U; CHANNELS]> + '_,
+    >
+    where
+        T: AsRef<[U]>,
+    {
+        (0..self.width()).map(move |x| (0..self.height()).map(move |y| unsafe { self.pixel(x, y) }))
+    }
+
+    /// iterator over rows
+    /// returns a iterator over each row
+    /// ```text
+    /// [ 1 2 3 ]
+    /// [ 4 5 6 ]
+    /// [ 7 8 9 ]
+    /// ```
+    ///
+    /// ```
+    /// # use fimg::Image;
+    /// let img: Image<&[u8],1> = Image::build(2, 3).buf(&[
+    ///     1, 5,
+    ///     2, 4,
+    ///     7, 9
+    /// ]);
+    /// assert_eq!(
+    ///     img.rows().collect::<Vec<_>>(),
+    ///     [[[1], [5]], [[2], [4]], [[7], [9]]]
+    /// );
+    /// ```
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    pub fn rows<'a, U: 'a>(
+        &'a self,
+    ) -> impl ExactSizeIterator + DoubleEndedIterator<Item = &'a [[U; CHANNELS]]>
+    where
+        T: AsRef<[U]>,
+    {
+        self.flatten().chunks_exact(self.width() as usize)
+    }
 }
 
 impl<T: AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
