@@ -1,6 +1,5 @@
 use super::{b64, Basic};
 use crate::{Image, WritePng};
-use core::intrinsics::transmute_unchecked as transmute;
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 
 /// Outputs [Iterm2 Inline image protocol](https://iterm2.com/documentation-images.html) encoded data.
