@@ -70,45 +70,36 @@ pub trait ClonerOverlay<const W: usize, const C: usize>: Sealed {
 /// # Safety
 /// - UB if rgb.len() % 3 != 0
 /// - UB if rgba.len() % 4 != 0
-unsafe fn blit(rgb: &mut [u8], rgba: &[u8]) {
-    let mut srci = 0;
-    let mut dsti = 0;
-    while dsti + 16 <= rgb.len() {
-        // SAFETY: i think it ok
-        let old: Simd<u8, 16> = Simd::from_slice(unsafe { rgb.get_unchecked(dsti..dsti + 16) });
-        // SAFETY: definitly ok
-        let new: Simd<u8, 16> = Simd::from_slice(unsafe { rgba.get_unchecked(srci..srci + 16) });
+unsafe fn blit(mut rgb: &mut [u8], mut rgba: &[u8]) {
+    while rgb.len() >= 16 {
+        let dst = rgb.first_chunk_mut::<16>().unwrap();
+        let src = rgba.first_chunk::<16>().unwrap();
+        let old = Simd::from_slice(dst);
+        let new: u8x16 = Simd::from_slice(src);
 
         let threshold = new.simd_ge(Simd::splat(128)).to_int().cast::<u8>();
         let mut mask = simd_swizzle!(
             threshold,
+            // [r, g, b, a (3)] [r, g, b, a(7)]
             [3, 3, 3, 7, 7, 7, 11, 11, 11, 15, 15, 15, 0, 0, 0, 0]
         );
         mask &= Simd::from_array([
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0,
         ]);
-
+        // [r(0), g, b] <skip a> [r(4), g, b]
         let new_rgb = simd_swizzle!(new, [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 0, 0, 0, 0]);
         let blended = (new_rgb & mask) | (old & !mask);
-        // SAFETY: 4 * 4 == 16, so in bounds
-        blended.copy_to_slice(unsafe { rgb.get_unchecked_mut(dsti..dsti + 16) });
-
-        srci += 16;
-        dsti += 12;
+        blended.copy_to_slice(dst);
+        rgb = &mut rgb[12..];
+        rgba = &rgba[16..];
     }
-
-    while dsti + 3 <= rgb.len() {
-        // SAFETY: caller guarantees slice is big enough
-        if unsafe { *rgba.get_unchecked(srci + 3) } >= 128 {
-            // SAFETY: slice is big enough!
-            let src = unsafe { rgba.get_unchecked(srci..=srci + 2) };
-            // SAFETY: i hear it bound
-            let end = unsafe { rgb.get_unchecked_mut(dsti..=dsti + 2) };
-            end.copy_from_slice(src);
+    while rgb.len() >= 3 {
+        // SAFETY: guaranteed
+        if unsafe { *rgba.get_unchecked(3) } >= 128 {
+            rgb[..3].copy_from_slice(&rgba[..3]);
         }
-
-        srci += 4;
-        dsti += 3;
+        rgba = &rgba[4..];
+        rgb = &mut rgb[3..];
     }
 }
 

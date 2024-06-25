@@ -58,7 +58,6 @@
     iter_array_chunks,
     core_intrinsics,
     slice_as_chunks,
-    slice_flatten,
     rustc_private,
     portable_simd,
     array_windows,
