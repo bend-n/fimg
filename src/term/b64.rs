@@ -1,7 +1,8 @@
 #![allow(clippy::undocumented_unsafe_blocks)]
 use core::intrinsics::simd::simd_cast;
+#[cfg(all(target_feature = "avx2", not(miri)))]
+use std::arch::x86_64::*;
 use std::{
-    arch::x86_64::*,
     intrinsics::transmute_unchecked,
     simd::{prelude::*, LaneCount, MaskElement, SimdElement, SupportedLaneCount},
 };
@@ -57,7 +58,8 @@ type c = u8x32;
 unsafe fn portable(mut input: &[u8], mut output: *mut u8) {
     while input.len() >= 32 {
         #[allow(unsafe_op_in_unsafe_fn)]
-        let indices = if cfg!(all(target_feature = "avx2", not(miri))) {
+        #[cfg(all(target_feature = "avx2", not(miri)))]
+        let indices = {
             let lo = _mm_loadu_si128(input.as_ptr() as *const __m128i);
             let hi = _mm_loadu_si128(input.as_ptr().add(12) as *const __m128i);
             let i = _mm256_shuffle_epi8(
@@ -73,7 +75,9 @@ unsafe fn portable(mut input: &[u8], mut output: *mut u8) {
             let t3 = _mm256_mullo_epi16(t2, _mm256_set1_epi32(0x01000010));
 
             c::from(_mm256_or_si256(t1, t3))
-        } else {
+        };
+        #[cfg(not(all(target_feature = "avx2", not(miri))))]
+        let indices = {
             let v = c::from_slice(input);
             let i = simd_swizzle!(
                 v,
@@ -125,11 +129,10 @@ fn lookup(x: c) -> c {
         b'0' as i8 - 52, b'0' as i8 - 52, b'0' as i8 - 52, b'0' as i8 - 52, b'0' as i8 - 52, b'+' as i8 - 62,
         b'/' as i8 - 63, b'A' as i8, 0, 0
     ]);
-    let result = if cfg!(all(target_feature = "avx2", not(miri))) {
-        unsafe { i8x32::from(_mm256_shuffle_epi8(LUT.into(), result.into())) }
-    } else {
-        (LUT.cas::<c>().swizzle_dyn(result)).cas::<i8x32>()
-    };
+    #[cfg(all(target_feature = "avx2", not(miri)))]
+    let result = unsafe { i8x32::from(_mm256_shuffle_epi8(LUT.into(), result.into())) };
+    #[cfg(not(all(target_feature = "avx2", not(miri))))]
+    let result = (LUT.cas::<c>().swizzle_dyn(result)).cas::<i8x32>();
 
     Cast::cas(result + x.cas::<i8x32>())
 }
