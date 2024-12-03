@@ -1,6 +1,11 @@
 //! define From's for images.
 //! these conversions are defined by [`PFrom`].
 use crate::{pixels::convert::PFrom, Image, Pack};
+use core::intrinsics::{fmul_algebraic, fsub_algebraic, transmute_unchecked as transmute};
+use std::{
+    mem::MaybeUninit as MU,
+    simd::{prelude::*, SimdElement, StdFloat},
+};
 
 fn map<const A: usize, const B: usize>(image: Image<&[u8], A>) -> Image<Box<[u8]>, B>
 where
@@ -92,4 +97,84 @@ where
         // SAFETY: ctor
         unsafe { Self::new(value.width, value.height, buf) }
     }
+}
+
+fn u8_to_f32(x: u8) -> f32 {
+    let magic = 2.0f32.powf(23.);
+    // x = 2^23 + x
+    let x = f32::from_bits((x as u32) ^ magic.to_bits());
+    fmul_algebraic(fsub_algebraic(x, magic), 1.0 / 255.0)
+}
+
+fn u8s_to_f32s(x: u8x8) -> f32x8 {
+    let x = x.cast::<u32>();
+    let magic = (1 << 23) as f32;
+    // SAFETY: its a simd, i can do what i want with it
+    let x = unsafe { transmute::<_, f32x8>(x ^ Simd::splat(magic.to_bits())) };
+    x.mul_add(Simd::splat(1.0 / 255.0), Simd::splat(-magic / 255.0))
+}
+
+// notice: this f32 better be in range 0.0-1.0
+fn f32_to_u8(x: f32) -> u8 {
+    let magic = (1 << 23) as f32;
+    (x.mul_add(255.0, magic).to_bits() ^ magic.to_bits()) as u8
+}
+
+fn f32s_to_u8s(x: f32x8) -> u8x8 {
+    let magic = (1 << 23) as f32;
+    (x.mul_add(Simd::splat(255.0), Simd::splat(magic)).cast() ^ Simd::splat(magic.to_bits())).cast()
+}
+
+fn mapping<T, U>(
+    x: &[T],
+    mut f: impl FnMut(Simd<T, 8>) -> Simd<U, 8>,
+    mut single: impl FnMut(T) -> U,
+) -> Vec<U>
+where
+    T: SimdElement,
+    U: SimdElement,
+    [(); (size_of::<Simd<T, 8>>() == size_of::<[T; 8]>()) as usize - 1]:,
+{
+    let mut out = Vec::with_capacity(x.len());
+    let to = out.spare_capacity_mut();
+    let (to, to_rest) = to.as_chunks_mut::<8>();
+    let (from, from_rest) = x.as_chunks::<8>();
+    for (&line, into) in from.iter().zip(to) {
+        // SAFETY: safe transmute (see condition)
+        unsafe { *into = transmute::<_, [MU<U>; 8]>(f(Simd::from_array(line))) };
+    }
+    for (i, &from) in from_rest.iter().enumerate() {
+        // SAFETY: compiler doesnt like it when i zip this
+        unsafe { to_rest.get_unchecked_mut(i) }.write(single(from));
+    }
+    // SAFETY: initialized.
+    unsafe { out.set_len(x.len()) };
+    out
+}
+
+impl<const N: usize> From<Image<&[u8], N>> for Image<Box<[f32]>, N> {
+    /// Reduce to 0.0-1.0 from 0-255.
+    fn from(value: Image<&[u8], N>) -> Self {
+        // SAFETY: length unchanged
+        unsafe { value.mapped(|x| mapping(x, u8s_to_f32s, u8_to_f32).into_boxed_slice()) }
+    }
+}
+
+impl<const N: usize> From<Image<&[f32], N>> for Image<Box<[u8]>, N> {
+    /// Expand to 0-255 from 0.0-1.0
+    fn from(value: Image<&[f32], N>) -> Self {
+        // SAFETY: length unchanged
+        unsafe { value.mapped(|x| mapping(x, f32s_to_u8s, f32_to_u8).into_boxed_slice()) }
+    }
+}
+
+#[test]
+fn roundtrip() {
+    let original = Image::<_, 3>::open("tdata/small_cat.png");
+    assert!(
+        Image::<Box<[u8]>, 3>::from(Image::<Box<[f32]>, 3>::from(original.as_ref()).as_ref(),)
+            // .show()
+            .bytes()
+            == original.bytes()
+    );
 }
