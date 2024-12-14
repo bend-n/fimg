@@ -536,20 +536,46 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         unsafe { *ptr }
     }
 
+    /// Returns a [`PixelEntry`]
+    pub fn replace<U: Copy>(
+        &mut self,
+        x: u32,
+        y: u32,
+        f: impl FnOnce([U; CHANNELS]) -> [U; CHANNELS],
+    ) -> Option<[U; CHANNELS]>
+    where
+        T: AsRef<[U]> + AsMut<[U]>,
+    {
+        if x < self.width() && y < self.height() {
+            let x = unsafe { self.pixel_mut(x, y) };
+            let v = *x;
+            *x = f(v);
+            Some(v)
+        } else {
+            None
+        }
+    }
+
     /// Return a mutable reference to a pixel at (x, y).
     /// # Safety
     ///
     /// - UB if x, y is out of bounds
     /// - UB if buffer is too small
     #[inline]
-    pub unsafe fn pixel_mut<U: Copy>(&mut self, x: u32, y: u32) -> &mut [U]
+    pub unsafe fn pixel_mut<U: Copy>(&mut self, x: u32, y: u32) -> &mut [U; CHANNELS]
     where
         T: AsMut<[U]> + AsRef<[U]>,
     {
         // SAFETY: we have been told x, y is in bounds.
         let idx = self.slice(x, y);
         // SAFETY: slice should always return a valid index
-        unsafe { self.buffer.as_mut().get_unchecked_mut(idx) }
+        unsafe {
+            self.buffer
+                .as_mut()
+                .get_unchecked_mut(idx)
+                .try_into()
+                .unwrap_unchecked()
+        }
     }
 
     /// iterator over columns
