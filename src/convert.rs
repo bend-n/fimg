@@ -178,3 +178,17 @@ fn roundtrip() {
             == original.bytes()
     );
 }
+
+impl<const N: usize, T: AsRef<[u8]>> Image<T, N> {
+    /// just an `into` wrapper
+    pub fn to_f32(&self) -> Image<Box<[f32]>, N> {
+        self.as_ref().into()
+    }
+}
+
+impl<const N: usize, T: AsRef<[f32]>> Image<T, N> {
+    /// just an `into` wrapper
+    pub fn to_u8(&self) -> Image<Box<[u8]>, N> {
+        self.as_ref().into()
+    }
+}
