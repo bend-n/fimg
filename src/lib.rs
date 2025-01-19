@@ -64,6 +64,7 @@
     doc_auto_cfg,
     const_option,
     array_chunks,
+    iter_chain,
     let_chains,
     try_blocks,
     test
@@ -85,6 +86,7 @@
     confusable_idents,
     internal_features
 )]
+use hinted::HintExt;
 use std::{hint::assert_unchecked, intrinsics::transmute_unchecked, num::NonZeroU32, ops::Range};
 
 mod affine;
@@ -195,7 +197,6 @@ impl Image<&[u8], 3> {
                 unsafe { img.copy_within(first.clone(), section) };
             }
         }
-
         let first_row = 0..img.at(0, self.height());
         for y in 1..(out_height / self.height()) {
             let this_row = img.at(0, y * self.height());
@@ -514,6 +515,17 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         unsafe { Image::new(self.width, self.height, self.buffer().as_ref()) }
     }
 
+    /// Get a pixel. Optionally. Yeah!
+    pub fn get_pixel<U: Copy>(&self, x: u32, y: u32) -> Option<[U; CHANNELS]>
+    where
+        T: AsRef<[U]>,
+    {
+        self.buffer()
+            .as_ref()
+            .get(self.slice(x, y))
+            .map(|x| unsafe { x.try_into().unwrap_unchecked() })
+    }
+
     /// Return a pixel at (x, y).
     /// # Safety
     ///
@@ -524,16 +536,8 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     where
         T: AsRef<[U]>,
     {
-        // SAFETY: x and y in bounds, slice is okay
-        let ptr = unsafe {
-            self.buffer()
-                .as_ref()
-                .get_unchecked(self.slice(x, y))
-                .as_ptr()
-                .cast()
-        };
-        // SAFETY: slice always returns a length of `CHANNELS`, so we `cast()` it for convenience.
-        unsafe { *ptr }
+        // SAFETY: x and y in bounds
+        unsafe { self.get_pixel(x, y).unwrap_unchecked() }
     }
 
     /// Returns a [`PixelEntry`]
@@ -567,15 +571,19 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         T: AsMut<[U]> + AsRef<[U]>,
     {
         // SAFETY: we have been told x, y is in bounds.
+        unsafe { self.get_pixel_mut(x, y).unwrap_unchecked() }
+    }
+
+    /// Returns a mutable reference to a pixel at (x, y), if (x, y) is in bounds.
+    pub fn get_pixel_mut<U>(&mut self, x: u32, y: u32) -> Option<&mut [U; CHANNELS]>
+    where
+        T: AsMut<[U]> + AsRef<[U]>,
+    {
         let idx = self.slice(x, y);
-        // SAFETY: slice should always return a valid index
-        unsafe {
-            self.buffer
-                .as_mut()
-                .get_unchecked_mut(idx)
-                .try_into()
-                .unwrap_unchecked()
-        }
+        self.buffer
+            .as_mut()
+            .get_mut(idx)
+            .map(|x| x.try_into().unwrap())
     }
 
     /// iterator over columns
@@ -642,6 +650,50 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         T: AsRef<[U]>,
     {
         self.flatten().chunks_exact(self.width() as usize)
+    }
+
+    /// Itearte the pixels of this image in parse order.
+    /// use [`Image::chunked`] if you just want the pixels.
+    pub fn ordered(&self) -> impl ExactSizeIterator + DoubleEndedIterator<Item = (u32, u32)> {
+        let w = self.width();
+        unsafe {
+            (0..self.height())
+                .flat_map(move |y| (0..w).map(move |x| (x, y)))
+                .has(self.width() as usize * self.height() as usize)
+        }
+    }
+
+    /// Iterate the pixels of this image in serpentine order.
+    ///
+    /// # Safety
+    ///
+    /// The points are guaranteed to be on the image.
+    pub fn serpent(&self) -> impl ExactSizeIterator + Iterator<Item = (u32, u32)> {
+        let w = self.width();
+        unsafe {
+            (0..self.height() / 2)
+                .flat_map(move |y| {
+                    std::iter::chain(
+                        (0..w).map(move |x| (x, y * 2)),
+                        (0..w).rev().map(move |x| (x, (y * 2) + 1)),
+                    )
+                })
+                .take(self.width() as usize * self.height() as usize)
+                .has(self.width() as usize * self.height() as usize)
+        }
+    }
+
+    /// Get the pixels from an iterator.
+    /// # Safety
+    /// the points must be on the image.
+    pub unsafe fn pixels_of<'l, U: Copy>(
+        &'l self,
+        iterator: impl ExactSizeIterator<Item = (u32, u32)> + 'l,
+    ) -> impl ExactSizeIterator<Item = [U; CHANNELS]> + 'l
+    where
+        T: AsRef<[U]>,
+    {
+        iterator.map(move |(x, y)| unsafe { self.pixel(x, y) })
     }
 }
 
