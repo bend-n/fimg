@@ -5,9 +5,12 @@ use std::marker::PhantomData;
 
 use crate::Image;
 
-impl<B: buf::Buffer, const C: usize> Image<B, C> {
+impl<B, const C: usize> Image<B, C> {
     /// creates a builder
-    pub const fn build(w: u32, h: u32) -> Builder<B, C> {
+    pub const fn build<I>(w: u32, h: u32) -> Builder<B, C>
+    where
+        B: AsRef<[I]>,
+    {
         Builder::new(w, h)
     }
 }
@@ -22,7 +25,7 @@ pub struct Builder<B, const C: usize> {
     #[allow(clippy::missing_docs_in_private_items)]
     _buffer: PhantomData<B>,
 }
-impl<B: buf::Buffer, const C: usize> Builder<B, C> {
+impl<B, const C: usize> Builder<B, C> {
     /// create new builder
     pub const fn new(w: u32, h: u32) -> Self {
         Self {
@@ -35,12 +38,15 @@ impl<B: buf::Buffer, const C: usize> Builder<B, C> {
     /// apply a buffer, and build
     #[track_caller]
     #[must_use = "what is it going to do?"]
-    pub fn buf(self, buffer: B) -> Image<B, C> {
+    pub fn buf<I>(self, buffer: B) -> Image<B, C>
+    where
+        B: AsRef<[I]>,
+    {
         let len = C as u32 * self.width * self.height;
         assert!(
-            buffer.len() as u32 == len,
+            buffer.as_ref().len() as u32 == len,
             "invalid buffer size (expected {len}, got {})",
-            buffer.len()
+            buffer.as_ref().len()
         );
         Image {
             buffer,
@@ -72,58 +78,5 @@ impl<T: Copy, const C: usize> Builder<Box<[T]>, C> {
     pub fn fill(self, with: [T; C]) -> Image<Box<[T]>, C> {
         Image::build(self.width, self.height)
             .buf((0..self.width * self.height).flat_map(|_| with).collect())
-    }
-}
-
-/// seals the [`Buffer`] trait
-mod buf {
-    /// A valid buffer for use in the builder
-    #[diagnostic::on_unimplemented(
-        message = "this type is not a buffer",
-        note = "if you think this type is a buffer, please open an issue.\nYou can manually circumvent this warning via Image::new."
-    )]
-    pub trait Buffer {
-        #[doc(hidden)]
-        fn len(&self) -> usize;
-    }
-    impl<T> Buffer for Vec<T> {
-        fn len(&self) -> usize {
-            self.len()
-        }
-    }
-    impl<T> Buffer for &[T] {
-        fn len(&self) -> usize {
-            <[T]>::len(self)
-        }
-    }
-    impl<T> Buffer for &mut [T] {
-        fn len(&self) -> usize {
-            <[T]>::len(self)
-        }
-    }
-    impl<T, const N: usize> Buffer for [T; N] {
-        fn len(&self) -> usize {
-            N
-        }
-    }
-    impl<T, const N: usize> Buffer for &[T; N] {
-        fn len(&self) -> usize {
-            N
-        }
-    }
-    impl<T, const N: usize> Buffer for &mut [T; N] {
-        fn len(&self) -> usize {
-            N
-        }
-    }
-    impl<T, const N: usize> Buffer for Box<[T; N]> {
-        fn len(&self) -> usize {
-            N
-        }
-    }
-    impl<T> Buffer for Box<[T]> {
-        fn len(&self) -> usize {
-            <[T]>::len(self)
-        }
     }
 }

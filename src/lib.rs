@@ -99,6 +99,7 @@ pub mod cloner;
 mod convert;
 mod drawing;
 mod r#dyn;
+pub mod indexed;
 pub(crate) mod math;
 mod overlay;
 mod pack;
@@ -309,9 +310,15 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 
     /// # Safety
     /// keep the buffer size the same
+    unsafe fn with<U, const N: usize>(&self, x: U) -> Image<U, N> {
+        unsafe { Image::new(self.width, self.height, x) }
+    }
+
+    /// # Safety
+    /// keep the buffer size the same
     unsafe fn map<U, const N: usize, F: FnOnce(&T) -> U>(&self, f: F) -> Image<U, N> {
         // SAFETY: we dont change anything, why check
-        unsafe { Image::new(self.width, self.height, f(self.buffer())) }
+        unsafe { self.with(f(self.buffer())) }
     }
 
     unsafe fn mapped<U, const N: usize, F: FnOnce(T) -> U>(self, f: F) -> Image<U, N> {
