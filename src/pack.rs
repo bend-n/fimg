@@ -3,18 +3,13 @@
 use crate::pixels::convert::{PFrom, RGB, RGBA, Y, YA};
 
 #[inline]
-pub const fn pack([r, g, b, a]: [u8; 4]) -> u32 {
-    ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
+pub const fn pack(x: [u8; 4]) -> u32 {
+    u32::from_le_bytes(x).rotate_left(8).swap_bytes()
 }
 
 #[inline]
 pub const fn unpack(n: u32) -> [u8; 4] {
-    [
-        ((n >> 16) & 0xFF) as u8,
-        ((n >> 8) & 0xFF) as u8,
-        (n & 0xFF) as u8,
-        ((n >> 24) & 0xFF) as u8,
-    ]
+    n.rotate_left(8).to_be_bytes()
 }
 
 /// packs and unpacks this pixel

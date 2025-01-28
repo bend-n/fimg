@@ -46,6 +46,14 @@ impl<I, P> IndexedImage<I, P> {
         }
     }
 
+    /// Gets a mut ref to raw parts.
+    pub unsafe fn raw<INDEX: uint>(&mut self) -> Image<&mut [INDEX], 1>
+    where
+        I: AsMut<[INDEX]>,
+    {
+        self.buffer.as_mut()
+    }
+
     /// Provides the buffer and palette of this image.
     pub fn into_raw_parts(self) -> (Image<I, 1>, P) {
         (self.buffer, self.palette)
