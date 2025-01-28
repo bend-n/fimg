@@ -46,8 +46,39 @@ impl<I, P> IndexedImage<I, P> {
         }
     }
 
+    /// Sets the pixel. Does not check if the index is in bounds, nor if it is even a valid pixel.
+    pub unsafe fn set_unchecked<INDEX: Copy>(&mut self, x: u32, y: u32, pixel: INDEX)
+    where
+        I: AsMut<[INDEX]>,
+    {
+        // SAFETY: they checked!
+        unsafe { *self.pixel_mut(x, y) = pixel };
+    }
+
+    /// Gets a mutref to pixel. pls (is ub!) no set out of bound.
+    pub unsafe fn pixel_mut<INDEX: Copy>(&mut self, x: u32, y: u32) -> &mut INDEX
+    where
+        I: AsMut<[INDEX]>,
+    {
+        let p = self.buffer.at(x, y);
+        unsafe { &mut self.raw().buffer[p] }
+    }
+
+    /// Sets the pixel. Panics if bounds are not met.
+    pub fn set<INDEX: uint, PIXEL>(&mut self, x: u32, y: u32, pixel: INDEX)
+    where
+        I: AsMut<[INDEX]>,
+        P: AsRef<[PIXEL]>,
+    {
+        assert!(self.buffer.width() < x);
+        assert!(self.buffer.height() < x);
+        assert!(pixel.nat() < self.palette.as_ref().len());
+        // SAFETY: we checked!
+        unsafe { self.set_unchecked(x, y, pixel) };
+    }
+
     /// Gets a mut ref to raw parts.
-    pub unsafe fn raw<INDEX: uint>(&mut self) -> Image<&mut [INDEX], 1>
+    pub unsafe fn raw<INDEX>(&mut self) -> Image<&mut [INDEX], 1>
     where
         I: AsMut<[INDEX]>,
     {
