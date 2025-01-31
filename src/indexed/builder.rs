@@ -1,5 +1,5 @@
 use super::{uint, IndexedImage as Image};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, mem::MaybeUninit};
 impl<B, P> Image<B, P> {
     /// creates a builder
     pub const fn build<I, J>(w: u32, h: u32) -> Builder<B, P>
@@ -55,5 +55,34 @@ impl<B, P> Builder<B, P> {
             self.palette.expect("require palette"),
         )
         .unwrap()
+    }
+
+    /// Allocates a zeroed buffer.
+    #[track_caller]
+    #[must_use]
+    pub fn alloc<I: uint, J>(self) -> Image<Box<[I]>, P>
+    where
+        P: AsRef<[J]>,
+    {
+        let palette = self.palette.expect("require palette");
+        assert!(palette.as_ref().len() != 0, "need some palette");
+        Image {
+            buffer: crate::Image::build(self.width, self.height).buf(
+                vec![I::default(); self.width as usize * self.height as usize].into_boxed_slice(),
+            ),
+            palette,
+        }
+    }
+
+    pub fn uninit<I: uint, J>(self) -> Image<Box<[MaybeUninit<I>]>, P>
+    where
+        P: AsRef<[J]>,
+    {
+        Image {
+            buffer: crate::Image::build(self.width, self.height).buf(Box::new_uninit_slice(
+                self.width as usize * self.height as usize,
+            )),
+            palette: self.palette.expect("require palette"),
+        }
     }
 }

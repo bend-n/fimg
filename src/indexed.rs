@@ -5,7 +5,7 @@ mod builder;
 use crate::Image;
 
 #[allow(non_camel_case_types)]
-trait uint: Copy + TryInto<usize> {
+trait uint: Default + Copy + TryInto<usize> {
     fn nat(self) -> usize {
         self.try_into().ok().unwrap()
     }
@@ -16,7 +16,7 @@ macro_rules! int {
         $(impl uint for $t {})+
     };
 }
-int!(u8 u16 u32 u64 u128);
+int!(u8 u16 u32 u64 usize u128);
 
 /// An image with a palette.
 #[derive(Clone)]

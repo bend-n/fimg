@@ -64,6 +64,7 @@
     doc_auto_cfg,
     const_option,
     array_chunks,
+    new_uninit,
     iter_chain,
     let_chains,
     try_blocks,
