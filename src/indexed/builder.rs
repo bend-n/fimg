@@ -57,6 +57,16 @@ impl<B, P> Builder<B, P> {
         .unwrap()
     }
 
+    pub unsafe fn buf_unchecked<I>(self, buffer: B) -> Image<B, P>
+    where
+        B: AsRef<[I]>,
+    {
+        Image {
+            buffer: crate::Image::build(self.width, self.height).buf(buffer),
+            palette: self.palette.expect("require palette"),
+        }
+    }
+
     /// Allocates a zeroed buffer.
     #[track_caller]
     #[must_use]

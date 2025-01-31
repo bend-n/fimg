@@ -485,7 +485,9 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 
     #[inline]
     /// Returns a iterator over every pixel
-    pub fn chunked<'a, U: 'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a [U; CHANNELS]>
+    pub fn chunked<'a, U: 'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = &'a [U; CHANNELS]> + ExactSizeIterator
     where
         T: AsRef<[U]>,
     {
