@@ -388,33 +388,33 @@ impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
     }
 }
 
-impl<const CHANNELS: usize, const N: usize> Image<[u8; N], CHANNELS> {
+impl<const CHANNELS: usize, const N: usize, T> Image<[T; N], CHANNELS> {
     /// Box this array image.
-    pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
+    pub fn boxed(self) -> Image<Box<[T]>, CHANNELS> {
         // SAFETY: size not changed
         unsafe { self.map_into() }
     }
 }
 
-impl<const CHANNELS: usize> Image<&[u8], CHANNELS> {
+impl<const CHANNELS: usize, T: Copy> Image<&[T], CHANNELS> {
     /// Box this image.
-    pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
+    pub fn boxed(self) -> Image<Box<[T]>, CHANNELS> {
         // SAFETY: size not changed
         unsafe { self.map_into() }
     }
 }
 
-impl<const CHANNELS: usize> Image<Vec<u8>, CHANNELS> {
+impl<const CHANNELS: usize, T> Image<Vec<T>, CHANNELS> {
     /// Box this owned image.
-    pub fn boxed(self) -> Image<Box<[u8]>, CHANNELS> {
+    pub fn boxed(self) -> Image<Box<[T]>, CHANNELS> {
         // SAFETY: ctor
         unsafe { self.map_into() }
     }
 }
 
-impl<const CHANNELS: usize> Image<Box<[u8]>, CHANNELS> {
+impl<const CHANNELS: usize, T> Image<Box<[T]>, CHANNELS> {
     /// Unbox this vec image.
-    pub fn unbox(self) -> Image<Vec<u8>, CHANNELS> {
+    pub fn unbox(self) -> Image<Vec<T>, CHANNELS> {
         // SAFETY: ctor
         unsafe { self.map_into() }
     }
