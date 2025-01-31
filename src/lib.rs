@@ -51,6 +51,7 @@
 //! - `default`: \[`save`, `scale`\].
 #![cfg_attr(all(feature = "term", windows), windows_subsystem = "console")]
 #![feature(
+    type_changing_struct_update,
     maybe_uninit_write_slice,
     hint_assert_unchecked,
     slice_swap_unchecked,

@@ -2,6 +2,8 @@
 #![allow(private_bounds)]
 mod builder;
 
+use std::mem::MaybeUninit;
+
 use crate::Image;
 
 #[allow(non_camel_case_types)]
@@ -40,7 +42,8 @@ impl<I, P> IndexedImage<I, P> {
             self.buffer.map(|x| {
                 x.as_ref()
                     .iter()
-                    .flat_map(|x| self.palette.as_ref()[x.nat()])
+                    // SAFETY: invariant.
+                    .flat_map(|x| *self.palette.as_ref().get_unchecked(x.nat()))
                     .collect()
             })
         }
@@ -102,5 +105,15 @@ impl<I, P> IndexedImage<I, P> {
         let good = buffer.chunked().all(|[x]| x.nat() < palette.as_ref().len());
         good.then_some(Self { buffer, palette })
             .ok_or("not all indexes are in palette")
+    }
+}
+impl<P, I: uint> IndexedImage<Box<[MaybeUninit<I>]>, P> {
+    /// Assumes this MU image is, in fact, initialized. You must be very sure that it is. Also, none of the pixels can be out of bounds.
+    pub unsafe fn assume_init(self) -> IndexedImage<Box<[I]>, P> {
+        IndexedImage {
+            // SAFETY: it really isnt.
+            buffer: unsafe { self.buffer.mapped(|x| x.assume_init()) },
+            ..self
+        }
     }
 }
