@@ -107,6 +107,7 @@ impl<I, P> IndexedImage<I, P> {
             .ok_or("not all indexes are in palette")
     }
 }
+
 impl<P, I: uint> IndexedImage<Box<[MaybeUninit<I>]>, P> {
     /// Assumes this MU image is, in fact, initialized. You must be very sure that it is. Also, none of the pixels can be out of bounds.
     pub unsafe fn assume_init(self) -> IndexedImage<Box<[I]>, P> {

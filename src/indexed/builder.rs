@@ -85,4 +85,24 @@ impl<B, P> Builder<B, P> {
             palette: self.palette.expect("require palette"),
         }
     }
+
+    /// Safety
+    ///
+    /// read implementation
+    pub unsafe fn from_iter<I: uint, J>(
+        self,
+        iter: impl Iterator<Item = ((u32, u32), I)> + ExactSizeIterator,
+    ) -> Image<Box<[I]>, P>
+    where
+        P: AsRef<[J]>,
+    {
+        debug_assert!(iter.len() >= self.width as usize * self.height as usize);
+        let mut me = self.uninit();
+        // SAFETY: the pixel must be in bounds
+        iter.for_each(|((x, y), item)| unsafe {
+            me.pixel_mut(x, y).write(item);
+        });
+        // SAFETY: all pixels must have been visited at least once
+        unsafe { me.assume_init() }
+    }
 }
