@@ -64,7 +64,7 @@ impl<I, P> IndexedImage<I, P> {
         I: AsMut<[INDEX]>,
     {
         let p = self.buffer.at(x, y);
-        unsafe { &mut self.raw().buffer[p] }
+        unsafe { self.raw().buffer.get_unchecked_mut(p) }
     }
 
     /// Sets the pixel. Panics if bounds are not met.
