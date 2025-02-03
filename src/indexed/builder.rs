@@ -62,7 +62,7 @@ impl<B, P> Builder<B, P> {
         B: AsRef<[I]>,
     {
         Image {
-            buffer: crate::Image::build(self.width, self.height).buf(buffer),
+            buffer: unsafe { crate::Image::build(self.width, self.height).buf_unchecked(buffer) },
             palette: self.palette.expect("require palette"),
         }
     }

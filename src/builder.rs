@@ -48,6 +48,16 @@ impl<B, const C: usize> Builder<B, C> {
             "invalid buffer size (expected {len}, got {})",
             buffer.as_ref().len()
         );
+        // SAFETY: checked!
+        unsafe { self.buf_unchecked(buffer) }
+    }
+    /// apply a buffer, and build (length unchecked)
+    #[track_caller]
+    #[must_use = "what is it going to do?"]
+    pub unsafe fn buf_unchecked<I>(self, buffer: B) -> Image<B, C>
+    where
+        B: AsRef<[I]>,
+    {
         Image {
             buffer,
             width: self.width.try_into().expect("passed zero width to builder"),
