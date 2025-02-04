@@ -53,7 +53,6 @@
 #![feature(
     type_changing_struct_update,
     maybe_uninit_write_slice,
-    hint_assert_unchecked,
     slice_swap_unchecked,
     generic_const_exprs,
     iter_array_chunks,
@@ -63,9 +62,7 @@
     portable_simd,
     array_windows,
     doc_auto_cfg,
-    const_option,
     array_chunks,
-    new_uninit,
     iter_chain,
     let_chains,
     try_blocks,

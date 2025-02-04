@@ -101,7 +101,7 @@ unsafe fn portable(mut input: &[u8], mut output: *mut u8) {
     }
     unsafe { encode_simple(input, output) };
 }
-
+#[allow(dead_code)]
 fn mulhi(x: u16x16, y: u16x16) -> u16x16 {
     unsafe {
         simd_cast::<_, u16x16>(
@@ -110,6 +110,7 @@ fn mulhi(x: u16x16, y: u16x16) -> u16x16 {
     }
 }
 
+#[allow(dead_code)]
 fn mullo(x: u16x16, y: u16x16) -> u16x16 {
     x * y
 }

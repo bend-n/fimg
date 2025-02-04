@@ -40,7 +40,7 @@ impl<T: Copy, const CHANNELS: usize> Image<T, CHANNELS> {
         let dat = unsafe { self.slice(i) };
         // SAFETY: caller
         unsafe { assert_unchecked(dat.len() == data.len()) };
-        MaybeUninit::copy_from_slice(dat, data);
+        dat.write_copy_of_slice(data);
     }
 
     /// Slice the image.
