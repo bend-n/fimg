@@ -1,7 +1,7 @@
 //! module for pixel blending ops
-use super::{convert::PFrom, unfloat, Floatify, Unfloatify};
+#![allow(redundant_semicolons)]
+use super::{Floatify, Unfloatify, convert::PFrom, unfloat};
 use atools::prelude::*;
-use umath::FF32;
 
 /// Trait for blending pixels together.
 pub trait Blend<const W: usize> {
@@ -10,6 +10,7 @@ pub trait Blend<const W: usize> {
 }
 
 impl Blend<4> for [u8; 4] {
+    #[lower::apply(algebraic)]
     fn blend(&mut self, fg: [u8; 4]) {
         if fg[3] == 0 {
             return;
@@ -26,12 +27,11 @@ impl Blend<4> for [u8; 4] {
         };
         self[..3].copy_from_slice(
             &fg.trunc()
-                // SAFETY: no u8 can possibly become INF / NAN
                 .zip(bg.trunc())
-                .map(|(f, b)| unsafe { (f * fg[3] + b * bg[3] * (FF32::new(1.0) - fg[3])) / a })
+                .map(|(f, b)| (f * fg[3] + b * bg[3] * (1.0 - fg[3])) / a)
                 .unfloat(),
         );
-        self[3] = unfloat(a);
+        self[3] = unfloat(a)
     }
 }
 
@@ -50,6 +50,7 @@ impl Blend<4> for [u8; 3] {
 }
 
 impl Blend<2> for [u8; 2] {
+    #[lower::apply(algebraic)]
     fn blend(&mut self, with: [u8; 2]) {
         let bg = self.float();
         let fg = with.float();
@@ -60,10 +61,10 @@ impl Blend<2> for [u8; 2] {
         }
         *self = [
             // SAFETY: no u8 can do transform bad
-            (fg[0] * fg[1] + bg[0] * bg[1] * (unsafe { FF32::new(1.0) } - fg[1])) / a,
+            (fg[0] * fg[1] + bg[0] * bg[1] * (unsafe { (1.0) } - fg[1])) / a,
             a,
         ]
-        .unfloat();
+        .unfloat()
     }
 }
 

@@ -1,5 +1,5 @@
 //! Manages the affine image transformations.
-use crate::{cloner::ImageCloner, Image};
+use crate::{Image, cloner::ImageCloner};
 
 impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
     /// Flip an image vertically.

@@ -2,7 +2,7 @@
 // TODO Y/YA
 use crate::{cloner::ImageCloner, uninit};
 
-use super::{assert_unchecked, Image};
+use super::{Image, assert_unchecked};
 use crate::pixels::Blend;
 use std::{mem::transmute, simd::prelude::*};
 
@@ -51,6 +51,14 @@ pub trait BlendingOverlay<W> {
     ///
     /// UB if a.width != b.width || a.height != b.height
     unsafe fn overlay_blended(&mut self, with: &W) -> &mut Self;
+}
+/// Blending overlay at.
+pub trait BlendingOverlayAt<W> {
+    /// See [BlendingOverlay::overlay_blended].
+    /// # Safety
+    ///
+    /// UB if x, y is out of bounds
+    unsafe fn overlay_blended_at(&mut self, with: &W, x: u32, y: u32) -> &mut Self;
 }
 
 /// [`Overlay`] but owned
@@ -131,6 +139,25 @@ where
         debug_assert!(self.height() == with.height());
         for (other_pixels, own_pixels) in with.chunked().zip(self.chunked_mut()) {
             own_pixels.blend(*other_pixels);
+        }
+        self
+    }
+}
+
+impl<const A: usize, const B: usize, T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>>
+    BlendingOverlayAt<Image<U, B>> for Image<T, A>
+where
+    [u8; A]: Blend<B>,
+{
+    #[inline]
+    unsafe fn overlay_blended_at(&mut self, with: &Image<U, B>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                let their_px = unsafe { &with.pixel(i, j) };
+                let our_px = unsafe { self.pixel_mut(i + x, j + y) };
+                our_px.blend(*their_px);
+            }
         }
         self
     }

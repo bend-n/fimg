@@ -3,7 +3,7 @@ name = "fimg"
 version = "0.4.44"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
-edition = "2021"
+edition = "2024"
 description = "fast image operations"
 repository = "https://github.com/bend-n/fimg"
 exclude = ["tdata", "benches/", ".gitignore"]
@@ -28,6 +28,7 @@ atools = "0.1.4"
 qwant = { version = "1.0.0", optional = true }
 libc = "0.2.154"
 hinted = { version = "0.0.2", features = ["nightly"] }
+lower = "0.2.0"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.53.0", features = [

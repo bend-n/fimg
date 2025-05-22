@@ -53,11 +53,12 @@
 #![feature(
     type_changing_struct_update,
     maybe_uninit_write_slice,
+    custom_inner_attributes,
     slice_swap_unchecked,
     generic_const_exprs,
+    proc_macro_hygiene,
     iter_array_chunks,
     core_intrinsics,
-    slice_as_chunks,
     rustc_private,
     portable_simd,
     array_windows,
@@ -116,8 +117,10 @@ mod show;
 #[cfg(feature = "term")]
 pub mod term;
 pub use cloner::ImageCloner;
-pub use overlay::{BlendingOverlay, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt};
 pub use r#dyn::DynImage;
+pub use overlay::{
+    BlendingOverlay, BlendingOverlayAt, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt,
+};
 
 trait CopyWithinUnchecked {
     /// # Safety
@@ -621,7 +624,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     pub fn cols<U: Copy>(
         &self,
     ) -> impl DoubleEndedIterator
-           + ExactSizeIterator<
+    + ExactSizeIterator<
         Item = impl ExactSizeIterator + DoubleEndedIterator<Item = [U; CHANNELS]> + '_,
     >
     where
