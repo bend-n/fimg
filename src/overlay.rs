@@ -163,6 +163,25 @@ where
     }
 }
 
+impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, 3> {
+    #[doc(hidden)]
+    pub unsafe fn blend_alpha_and_color_at(
+        &mut self,
+        with: &Image<&[u8], 1>,
+        color: [u8; 3],
+        x: u32,
+        y: u32,
+    ) {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                let &[their_alpha] = unsafe { &with.pixel(i, j) };
+                let our_pixel = unsafe { self.pixel_mut(i + x, j + y) };
+                crate::pixels::blending::blend_alpha_and_color(their_alpha, color, our_pixel);
+            }
+        }
+    }
+}
+
 impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
     #[inline]
     #[must_use = "function does not modify the original image"]

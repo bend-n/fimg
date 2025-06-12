@@ -1,12 +1,35 @@
 //! module for pixel blending ops
 #![allow(redundant_semicolons)]
-use super::{Floatify, Unfloatify, convert::PFrom, unfloat};
+use super::{Floatify, Unfloatify, convert::PFrom, float, unfloat};
 use atools::prelude::*;
 
 /// Trait for blending pixels together.
 pub trait Blend<const W: usize> {
     /// blends self with another pixel
     fn blend(&mut self, with: [u8; W]);
+}
+
+pub(crate) fn blend_alpha_and_color(a: u8, color: [u8; 3], onto: &mut [u8; 3]) {
+    if a == 0 {
+        return;
+    }
+    if a == 255 {
+        *onto = color;
+        return;
+    }
+
+    let [br, bg, bb] = *onto;
+    let [fr, fg, fb] = color;
+
+    onto[0] = lerp(br, fr, a);
+    onto[1] = lerp(bg, fg, a);
+    onto[2] = lerp(bb, fb, a);
+
+    // onto.copy_from_slice(&fg.zip(bg).map(|(f, b)| a * (f - b) + b));
+}
+
+fn lerp(ba: u8, fo: u8, a: u8) -> u8 {
+    ((fo as i32 - ba as i32) * a as i32 / 256 + ba as i32) as u8
 }
 
 impl Blend<4> for [u8; 4] {
