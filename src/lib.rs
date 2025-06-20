@@ -665,7 +665,9 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
 
     /// Itearte the pixels of this image in parse order.
     /// use [`Image::chunked`] if you just want the pixels.
-    pub fn ordered(&self) -> impl ExactSizeIterator + DoubleEndedIterator<Item = (u32, u32)> {
+    pub fn ordered(
+        &self,
+    ) -> impl ExactSizeIterator + DoubleEndedIterator<Item = (u32, u32)> + use<T, CHANNELS> {
         let w = self.width();
         unsafe {
             (0..self.height())
@@ -679,7 +681,9 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// # Safety
     ///
     /// The points are guaranteed to be on the image.
-    pub fn serpent(&self) -> impl ExactSizeIterator + Iterator<Item = (u32, u32)> {
+    pub fn serpent(
+        &self,
+    ) -> impl ExactSizeIterator + Iterator<Item = (u32, u32)> + use<T, CHANNELS> {
         let w = self.width();
         unsafe {
             (0..self.height() / 2)
