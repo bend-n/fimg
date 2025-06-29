@@ -130,17 +130,15 @@ impl<T, const C: usize> Image<T, C> {
 impl<T: Clone, const C: usize> SubImage<&[T], C> {
     /// Clones this [`SubImage`] into its own [`Image`]
     pub fn own(&self) -> Image<Box<[T]>, C> {
-        let mut out =
-            Vec::with_capacity(self.real_width.get() as usize * self.inner.height() as usize * C);
-        for row in self
-            .inner
-            .buffer
-            .chunks_exact(self.inner.width.get() as usize)
-            .take(self.real_height.get() as usize)
-        {
+        let mut out = Vec::with_capacity(
+            self.real_width.get() as usize * self.real_height.get() as usize * C,
+        );
+
+        for row in self.inner.rows().take(self.real_height.get() as usize) {
             out.extend_from_slice(
                 &row[self.offset_x as usize
-                    ..self.offset_x as usize + self.real_width.get() as usize],
+                    ..self.offset_x as usize + self.real_width.get() as usize]
+                    .as_flattened(),
             );
         }
         // SAFETY: ctor
