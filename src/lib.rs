@@ -149,6 +149,8 @@ trait At {
 }
 
 impl At for (u32, u32) {
+    #[cfg_attr(debug_assertions, track_caller)]
+    #[inline]
     fn at<const C: usize>(self, x: u32, y: u32) -> usize {
         debug_assert!(x < self.0, "x out of bounds");
         debug_assert!(y < self.1, "y out of bounds");
@@ -306,6 +308,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// the output index is not guaranteed to be in bounds
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     fn at(&self, x: u32, y: u32) -> usize {
         (self.width(), self.height()).at::<CHANNELS>(x, y)
     }
@@ -473,6 +476,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// the output index is not guaranteed to be in bounds
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     fn slice<U>(&self, x: u32, y: u32) -> Range<usize>
     where
         T: AsRef<[U]>,
@@ -577,6 +581,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// - UB if x, y is out of bounds
     /// - UB if buffer is too small
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn pixel_mut<U: Copy>(&mut self, x: u32, y: u32) -> &mut [U; CHANNELS]
     where
         T: AsMut<[U]> + AsRef<[U]>,
@@ -586,6 +591,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     }
 
     /// Returns a mutable reference to a pixel at (x, y), if (x, y) is in bounds.
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn get_pixel_mut<U>(&mut self, x: u32, y: u32) -> Option<&mut [U; CHANNELS]>
     where
         T: AsMut<[U]> + AsRef<[U]>,

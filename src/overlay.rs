@@ -29,6 +29,7 @@ pub trait ClonerOverlayAt<const W: usize, const C: usize>: Sealed {
     /// # Safety
     ///
     /// UB if x, y is out of bounds
+    #[must_use = "function does not modify the original image"]
     unsafe fn overlay_at(&self, with: &Image<&[u8], W>, x: u32, y: u32) -> Image<Vec<u8>, C>;
 }
 
@@ -113,6 +114,7 @@ unsafe fn blit(mut rgb: &mut [u8], mut rgba: &[u8]) {
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Image<T, 4> {
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
@@ -134,6 +136,7 @@ where
     [u8; A]: Blend<B>,
 {
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay_blended(&mut self, with: &Image<U, B>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
@@ -165,6 +168,7 @@ where
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, 3> {
     #[doc(hidden)]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn blend_alpha_and_color_at(
         &mut self,
         with: &Image<&[u8], 1>,
@@ -195,6 +199,7 @@ impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Image<T, 3> {
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         // SAFETY: caller upholds this
         unsafe { assert_unchecked(x + with.width() <= self.width()) };
@@ -219,6 +224,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Im
 }
 
 impl<U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for uninit::Image<u8, 3> {
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay_at(&mut self, with: &Image<U, 4>, x: u32, y: u32) -> &mut Self {
         // SAFETY: caller upholds this
         unsafe { assert_unchecked(x + with.width() <= self.width()) };
@@ -244,7 +250,6 @@ impl<U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for uninit::Image<u8, 3> {
 
 impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
     #[inline]
-    #[must_use = "function does not modify the original image"]
     unsafe fn overlay_at(&self, with: &Image<&[u8], 4>, x: u32, y: u32) -> Image<Vec<u8>, 3> {
         let mut new = self.dup();
         // SAFETY: same
@@ -255,6 +260,7 @@ impl ClonerOverlayAt<4, 3> for ImageCloner<'_, 3> {
 
 impl<U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for uninit::Image<u8, 3> {
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
         for j in 0..(with.width() as usize) {
             let i_x = j * (with.width() as usize) * 3..(j + 1) * (with.width() as usize) * 3;
@@ -282,6 +288,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Im
     ///
     /// UB if x, y is out of bounds
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
         /// helper macro for defining rgb=>rgb overlays. allows unrolling
         macro_rules! o3x3 {
@@ -321,7 +328,6 @@ impl ClonerOverlayAt<3, 3> for ImageCloner<'_, 3> {
     ///
     /// UB if x, y is out of bounds
     #[inline]
-    #[must_use = "function does not modify the original image"]
     unsafe fn overlay_at(&self, with: &Image<&[u8], 3>, x: u32, y: u32) -> Image<Vec<u8>, 3> {
         let mut out = self.dup();
         // SAFETY: same
@@ -332,6 +338,7 @@ impl ClonerOverlayAt<3, 3> for ImageCloner<'_, 3> {
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Image<T, 3> {
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay(&mut self, with: &Image<U, 4>) -> &mut Self {
         debug_assert!(self.width() == with.width());
         debug_assert!(self.height() == with.height());
