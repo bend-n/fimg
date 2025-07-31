@@ -1,10 +1,11 @@
 //! define From's for images.
 //! these conversions are defined by [`PFrom`].
-use crate::{pixels::convert::PFrom, Image, Pack};
+use crate::{Image, Pack, pixels::convert::PFrom};
+use array_chunks::*;
 use core::intrinsics::{fmul_algebraic, fsub_algebraic, transmute_unchecked as transmute};
 use std::{
     mem::MaybeUninit as MU,
-    simd::{prelude::*, SimdElement, StdFloat},
+    simd::{SimdElement, StdFloat, prelude::*},
 };
 
 fn map<const A: usize, const B: usize>(image: Image<&[u8], A>) -> Image<Box<[u8]>, B>

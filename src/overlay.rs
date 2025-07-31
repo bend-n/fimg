@@ -188,7 +188,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, 3> {
 
 impl ClonerOverlay<4, 4> for ImageCloner<'_, 4> {
     #[inline]
-    #[must_use = "function does not modify the original image"]
     unsafe fn overlay(&self, with: &Image<&[u8], 4>) -> Image<Vec<u8>, 4> {
         let mut out = self.dup();
         // SAFETY: same
@@ -363,7 +362,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Imag
 
 impl ClonerOverlay<4, 3> for ImageCloner<'_, 3> {
     #[inline]
-    #[must_use = "function does not modify the original image"]
     unsafe fn overlay(&self, with: &Image<&[u8], 4>) -> Image<Vec<u8>, 3> {
         let mut out = self.dup();
         // SAFETY: same
@@ -393,7 +391,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Im
 
 impl ClonerOverlayAt<4, 4> for ImageCloner<'_, 4> {
     #[inline]
-    #[must_use = "function does not modify the original image"]
     unsafe fn overlay_at(&self, with: &Image<&[u8], 4>, x: u32, y: u32) -> Image<Vec<u8>, 4> {
         let mut out = self.dup();
         // SAFETY: same

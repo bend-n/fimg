@@ -63,9 +63,7 @@
     portable_simd,
     array_windows,
     doc_auto_cfg,
-    array_chunks,
     iter_chain,
-    let_chains,
     try_blocks,
     test
 )]
@@ -86,6 +84,7 @@
     confusable_idents,
     internal_features
 )]
+use array_chunks::*;
 use hinted::HintExt;
 use std::{hint::assert_unchecked, intrinsics::transmute_unchecked, num::NonZeroU32, ops::Range};
 
@@ -149,11 +148,8 @@ trait At {
 }
 
 impl At for (u32, u32) {
-    #[cfg_attr(debug_assertions, track_caller)]
     #[inline]
     fn at<const C: usize>(self, x: u32, y: u32) -> usize {
-        debug_assert!(x < self.0, "x out of bounds");
-        debug_assert!(y < self.1, "y out of bounds");
         #[allow(clippy::multiple_unsafe_ops_per_block)]
         // SAFETY: me when uncheck math: 😧 (FIXME)
         let index = unsafe {
@@ -476,13 +472,11 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// the output index is not guaranteed to be in bounds
     #[inline]
-    #[cfg_attr(debug_assertions, track_caller)]
     fn slice<U>(&self, x: u32, y: u32) -> Range<usize>
     where
         T: AsRef<[U]>,
     {
         let index = self.at(x, y);
-        debug_assert!(self.len() > index);
         // SAFETY: as long as the buffer isnt wrong, this is 😄
         index..unsafe { index.unchecked_add(CHANNELS) }
     }

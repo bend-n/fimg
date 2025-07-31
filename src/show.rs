@@ -3,7 +3,7 @@ use crate::Image;
 #[cfg(feature = "real-show")]
 mod real {
     use crate::Image;
-    use minifb::{Key, Window};
+    use minifb::{Key, Window, WindowOptions};
 
     pub fn show<const CHANNELS: usize>(i: Image<&[u8], CHANNELS>)
     where
@@ -16,6 +16,7 @@ mod real {
             Default::default(),
         )
         .unwrap();
+        win.set_title("image viewer");
         let font = fontdue::Font::from_bytes(
             &include_bytes!("../data/CascadiaCode.ttf")[..],
             fontdue::FontSettings {
@@ -34,6 +35,7 @@ mod real {
                     .map(|(x, y)| (x.min(i.width()), y.min(i.height())))
             {
                 // SAFETY: ctor
+                let pix = unsafe { i.pixel(x, y) };
                 unsafe { Image::new(buf.width, buf.height, &mut *buf.buffer) }.text(
                     5,
                     i.height() - 20,
@@ -42,7 +44,7 @@ mod real {
                     &format!(
                         "P ({x}, {y}), {}",
                         // SAFETY: clampd
-                        match unsafe { &i.pixel(x, y)[..] } {
+                        match &pix[..] {
                             [y] => format!("(Y {y})"),
                             [y, a] => format!("(Y {y} A {a})"),
                             [r, g, b] => format!("(R {r} G {g} B {b})"),

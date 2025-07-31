@@ -1,11 +1,11 @@
 //! text raster
 
 use crate::{
-    pixels::{float, Wam},
     Image, Pack,
+    pixels::{Wam, float},
 };
-use fontdue::{layout::TextStyle, Font};
-use umath::{generic_float::Constructors, FF32};
+use fontdue::{Font, layout::TextStyle};
+use umath::{FF32, generic_float::Constructors};
 
 /// note: `N` may != channels
 pub trait Text<const N: usize> {
@@ -37,7 +37,7 @@ impl<T: AsMut<[u32]> + AsRef<[u32]>> Text<4> for Image<T, 1> {
                     // SAFETY: see above
                     *(&mut unsafe { self.pixel_mut(x, y) }[0]) =
                         // SAFETY: fill is 0..=1
-                        Pack::pack(unsafe { &bg.wam(color, FF32::one() - fill, fill) });
+                        Pack::pack(& bg.wam(color, 1.0 - fill, fill));
                 }
             }
         }
@@ -67,7 +67,7 @@ impl<const N: usize, T: AsMut<[u8]> + AsRef<[u8]>> Text<N> for Image<T, N> {
                     // SAFETY: we clampin
                     let bg = unsafe { &mut *(self.pixel_mut(x, y).as_mut_ptr() as *mut [u8; N]) };
                     // SAFETY: fill is 0..=1
-                    *bg = unsafe { bg.wam(color, FF32::one() - fill, fill) };
+                    *bg = unsafe { bg.wam(color, *(FF32::one() - fill), fill) };
                 }
             }
         }
