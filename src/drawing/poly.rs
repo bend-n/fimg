@@ -1,10 +1,10 @@
 //! draw polygons
-use crate::math::{madd, FExt};
+use crate::Image;
+use crate::math::{FExt, madd};
+use array_chunks::*;
 use std::cmp::{max, min};
 use std::f32::consts::TAU;
 use vecto::Vec2;
-
-use crate::Image;
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Draws a filled polygon from a slice of points. Please close your poly. (first == last)

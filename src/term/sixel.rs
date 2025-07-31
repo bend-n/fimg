@@ -1,7 +1,7 @@
 use core::intrinsics::transmute_unchecked as transmute;
 use std::fmt::{Debug, Display, Formatter, Result, Write};
 
-use crate::{pixels::convert::PFrom, Image};
+use crate::{Image, pixels::convert::PFrom};
 
 use super::Basic;
 
@@ -117,7 +117,7 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
                 let mut last = -1;
                 for (x, byte) in Grouped(samples, |(_, (x, _))| x).map(|v| {
                     (
-                        v[0].1 .0 as i32,
+                        v[0].1.0 as i32,
                         v.iter()
                             .map(|&(_, (_, y))| (1 << y))
                             .fold(0, |acc, x| acc | x),
