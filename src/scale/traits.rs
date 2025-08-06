@@ -40,7 +40,7 @@ pub trait ToImageView<const N: usize>: Sealed {
     #[doc(hidden)]
     type P: fr::PixelExt + fr::Convolution;
     #[doc(hidden)]
-    fn wrap(i: Image<&[u8], N>) -> fr::ImageView<Self::P>;
+    fn wrap(i: Image<&[u8], N>) -> fr::ImageView<'_, Self::P>;
 }
 
 /// helper
@@ -60,7 +60,7 @@ macro_rules! tiv {
     ($n:literal, $which:ident) => {
         impl ToImageView<$n> for ChannelCount<$n> {
             type P = fr::$which;
-            fn wrap(i: Image<&[u8], $n>) -> fr::ImageView<Self::P> {
+            fn wrap(i: Image<&[u8], $n>) -> fr::ImageView<'_, Self::P> {
                 // SAFETY: same conds
                 unsafe { fr::ImageView::new(i.width, i.height, i.buffer()) }
             }
@@ -77,7 +77,7 @@ macro_rules! adiv {
     ($n:literal, $which:ident) => {
         impl AlphaDiv<$n> for ChannelCount<$n> {
             type P = fr::$which;
-            fn handle(i: Image<&mut [u8], $n>) -> fr::Image<<Self as AlphaDiv<$n>>::P> {
+            fn handle(i: Image<&mut [u8], $n>) -> fr::Image<'_, <Self as AlphaDiv<$n>>::P> {
                 // SAFETY: we kinda have the same conditions
                 let mut i = unsafe { fr::Image::from_slice_u8(i.width, i.height, i.take_buffer()) };
                 // SAFETY: mhm

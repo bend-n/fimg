@@ -119,7 +119,7 @@ impl<T: AsRef<[u8]>, const N: usize> Sixel<T, N> {
                     (
                         v[0].1.0 as i32,
                         v.iter()
-                            .map(|&(_, (_, y))| (1 << y))
+                            .map(|&(_, (_, y))| 1 << y)
                             .fold(0, |acc, x| acc | x),
                     )
                 }) {

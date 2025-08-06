@@ -3,7 +3,7 @@ use crate::Image;
 #[cfg(feature = "real-show")]
 mod real {
     use crate::Image;
-    use minifb::{Key, Window, WindowOptions};
+    use minifb::{Key, Window};
 
     pub fn show<const CHANNELS: usize>(i: Image<&[u8], CHANNELS>)
     where
