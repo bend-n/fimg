@@ -529,10 +529,11 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     where
         T: AsRef<[U]>,
     {
-        self.buffer()
-            .as_ref()
-            .get(self.slice(x, y))
-            .map(|x| unsafe { x.try_into().unwrap_unchecked() })
+        ((x < self.width()) & (y < self.height())).then(|| unsafe {
+            self.buffer().as_ref()[self.slice(x, y)]
+                .try_into()
+                .unwrap_unchecked()
+        })
     }
 
     /// Return a pixel at (x, y).
