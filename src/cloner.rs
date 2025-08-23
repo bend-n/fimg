@@ -5,7 +5,7 @@
 //! # let i = Image::<_, 1>::alloc(5, 5);
 //! unsafe { i.cloner().rot_270() };
 //! ```
-use crate::{uninit, Image};
+use crate::{Image, uninit};
 
 /// A neat way to clone a image.
 ///

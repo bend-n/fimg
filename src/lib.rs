@@ -58,12 +58,13 @@
     generic_const_exprs,
     proc_macro_hygiene,
     iter_array_chunks,
+    const_trait_impl,
     core_intrinsics,
     rustc_private,
     portable_simd,
     array_windows,
     doc_auto_cfg,
-    iter_chain,
+    const_from,
     try_blocks,
     test
 )]
@@ -162,7 +163,7 @@ impl At for (u32, u32) {
     }
 }
 
-impl Image<&[u8], 3> {
+impl<T: AsRef<[u8]>> Image<T, 3> {
     /// Tile self till it fills a new image of size x, y
     /// # Safety
     ///
@@ -185,6 +186,7 @@ impl Image<&[u8], 3> {
             // SAFETY: get one row of pixels
             let from = unsafe {
                 self.buffer
+                    .as_ref()
                     .get_unchecked(self.at(0, y)..self.at(0, y) + (self.width() as usize * 3))
             };
             debug_assert_eq!(from.len(), self.width() as usize * 3);
@@ -253,6 +255,11 @@ impl<T: Clone, const CHANNELS: usize> Clone for Image<T, CHANNELS> {
 }
 
 impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
+    #[doc(hidden)]
+    pub const fn channels(&self) -> usize {
+        CHANNELS
+    }
+
     #[inline]
     /// get the height as a [`u32`]
     pub const fn height(&self) -> u32 {
@@ -321,8 +328,8 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         // SAFETY: we dont change anything, why check
         unsafe { self.with(f(self.buffer())) }
     }
-
-    unsafe fn mapped<U, const N: usize, F: FnOnce(T) -> U>(self, f: F) -> Image<U, N> {
+    #[doc(hidden)]
+    pub unsafe fn mapped<U, const N: usize, F: FnOnce(T) -> U>(self, f: F) -> Image<U, N> {
         // SAFETY: we dont change anything, why check
         unsafe { Image::new(self.width, self.height, f(self.buffer)) }
     }

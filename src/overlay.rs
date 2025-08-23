@@ -1,6 +1,6 @@
 //! Handles image overlay
 // TODO Y/YA
-use crate::{cloner::ImageCloner, uninit};
+use crate::{DynImage, cloner::ImageCloner, uninit};
 
 use super::{Image, assert_unchecked};
 use crate::pixels::Blend;
@@ -278,6 +278,95 @@ impl<U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for uninit::Image<u8, 3> {
     }
 }
 
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 1>> for Image<T, 3> {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    /// this impl doesnt make much sense without a color.
+    unsafe fn overlay_at(&mut self, with: &Image<U, 1>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                let &[their_px] = unsafe { &with.pixel(i, j) };
+                let our_px = unsafe { self.pixel_mut(i + x, j + y) };
+                our_px.copy_from_slice(&[their_px; 3]);
+            }
+        }
+        self
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Image<T, 3> {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    /// this impl doesnt make much sense without a color.
+    unsafe fn overlay_at(&mut self, with: &Image<U, 2>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                let &[their_px, a] = unsafe { &with.pixel(i, j) };
+                if a >= 128 {
+                    let our_px = unsafe { self.pixel_mut(i + x, j + y) };
+                    our_px.copy_from_slice(&[their_px; 3]);
+                }
+            }
+        }
+        self
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 1>> for Image<T, 4> {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    /// this impl doesnt make much sense without a color.
+    unsafe fn overlay_at(&mut self, with: &Image<U, 1>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                let &[their_px] = unsafe { &with.pixel(i, j) };
+                let our_px = unsafe { self.pixel_mut(i + x, j + y) };
+                our_px.copy_from_slice(&[their_px; 4]);
+            }
+        }
+        self
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Image<T, 4> {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    /// this impl doesnt make much sense without a color.
+    unsafe fn overlay_at(&mut self, with: &Image<U, 2>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                let &[their_px, a] = unsafe { &with.pixel(i, j) };
+                if a >= 128 {
+                    let our_px = unsafe { self.pixel_mut(i + x, j + y) };
+                    our_px.copy_from_slice(&[their_px; 4]);
+                }
+            }
+        }
+        self
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Image<T, 4> {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    /// its not a optimized impl
+    unsafe fn overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                let their_px = unsafe { &with.pixel(i, j) };
+                let our_px = unsafe { self.pixel_mut(i + x, j + y) };
+                our_px.copy_from_slice(their_px);
+            }
+        }
+        self
+    }
+}
+
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Image<T, 3> {
     /// Overlay a RGB image(with) => self at coordinates x, y.
     /// As this is a `RGBxRGB` operation, blending is unnecessary,
@@ -396,5 +485,34 @@ impl ClonerOverlayAt<4, 4> for ImageCloner<'_, 4> {
         // SAFETY: same
         unsafe { out.as_mut().overlay_at(with, x, y) };
         out
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<DynImage<U>> for Image<T, 3> {
+    unsafe fn overlay_at(&mut self, with: &DynImage<U>, x: u32, y: u32) -> &mut Self {
+        crate::r#dyn::e!(with, |with| unsafe {
+            self.overlay_at(with, x, y);
+        });
+        self
+    }
+}
+
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<DynImage<U>> for Image<T, 4> {
+    unsafe fn overlay_at(&mut self, with: &DynImage<U>, x: u32, y: u32) -> &mut Self {
+        crate::r#dyn::e!(with, |with| unsafe {
+            self.overlay_at(with, x, y);
+        });
+        self
+    }
+}
+
+impl<U: AsRef<[u8]>> OverlayAt<DynImage<U>> for uninit::Image<u8, 3> {
+    unsafe fn overlay_at(&mut self, with: &DynImage<U>, x: u32, y: u32) -> &mut Self {
+        match with {
+            DynImage::Rgb(with) => unsafe { self.overlay_at(with, x, y) },
+            DynImage::Rgba(with) => unsafe { self.overlay_at(with, x, y) },
+            _ => unimplemented!(),
+        };
+        self
     }
 }

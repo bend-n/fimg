@@ -1,4 +1,4 @@
-use crate::{pixels::convert::PFrom, Image};
+use crate::{Image, pixels::convert::PFrom};
 mod affine;
 mod convert;
 #[cfg(feature = "scale")]
@@ -20,6 +20,30 @@ pub enum DynImage<T> {
 
 impl Copy for DynImage<&[u8]> {}
 
+impl<T> const From<Image<T, 1>> for DynImage<T> {
+    fn from(x: Image<T, 1>) -> Self {
+        Self::Y(x)
+    }
+}
+
+impl<T> const From<Image<T, 2>> for DynImage<T> {
+    fn from(x: Image<T, 2>) -> Self {
+        Self::Ya(x)
+    }
+}
+
+impl<T> const From<Image<T, 3>> for DynImage<T> {
+    fn from(x: Image<T, 3>) -> Self {
+        Self::Rgb(x)
+    }
+}
+
+impl<T> const From<Image<T, 4>> for DynImage<T> {
+    fn from(x: Image<T, 4>) -> Self {
+        Self::Rgba(x)
+    }
+}
+
 macro_rules! e {
     ($dyn:expr => |$image: pat_param| $do:expr) => {
         match $dyn {
@@ -38,7 +62,7 @@ macro_rules! e {
         }
     };
 }
-use e;
+pub(crate) use e;
 
 #[cfg(feature = "term")]
 impl<T: AsRef<[u8]>> std::fmt::Display for crate::term::Display<DynImage<T>> {
@@ -72,6 +96,12 @@ impl<T> DynImage<T> {
         e!(self, |i| i.height())
     }
 
+    #[doc(hidden)]
+    pub unsafe fn mapped<U, F: FnOnce(T) -> U>(self, f: F) -> DynImage<U> {
+        // SAFETY: we dont change anything, why check
+        unsafe { e!(self => |i| i.mapped(f)) }
+    }
+
     /// Get the image buffer.
     pub const fn buffer(&self) -> &T {
         e!(self, |i| i.buffer())
@@ -80,6 +110,13 @@ impl<T> DynImage<T> {
     /// Take the image buffer.
     pub fn take_buffer(self) -> T {
         e!(self, |i| i.take_buffer())
+    }
+}
+
+impl DynImage<&[u8]> {
+    /// Copy this ref image
+    pub fn copy(&self) -> Self {
+        e!(self => |i| i.copy())
     }
 }
 
