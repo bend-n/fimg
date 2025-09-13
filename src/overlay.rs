@@ -112,6 +112,34 @@ unsafe fn blit(mut rgb: &mut [u8], mut rgba: &[u8]) {
     }
 }
 
+#[doc(hidden)]
+#[unsafe(no_mangle)]
+pub fn copy_rgb_bgr_(i: &[[u8; 3]], o: &mut [[u8; 4]]) {
+    unsafe { assert_unchecked(i.len() == o.len()) };
+    let mut i = i.as_flattened();
+    let mut o = o.as_flattened_mut();
+    while i.len() >= 32 {
+        let dst = unsafe { o.first_chunk_mut::<32>().unwrap_unchecked() }; // 8 pixels (32)
+        let src = u8x32::from_array(*i.first_chunk().unwrap()); // 8 pixels (24)
+        let src = simd_swizzle!(
+            src,
+            // range::<8>().map(_ * 3).map(|x| [x + 2, x + 1, x, 31]).flatten()
+            [
+                2, 1, 0, 31, 5, 4, 3, 31, 8, 7, 6, 31, 11, 10, 9, 31, 14, 13, 12, 31, 17, 16, 15,
+                31, 20, 19, 18, 31, 23, 22, 21, 31,
+            ],
+        );
+        src.copy_to_slice(dst);
+        i = &i[24..];
+        o = &mut o[32..];
+    }
+    while let Some(&[r, g, b]) = i.first_chunk() {
+        unsafe { *o.first_chunk_mut::<4>().unwrap_unchecked() = [b, g, r, 0] };
+        o = &mut o[4..];
+        i = &i[3..];
+    }
+}
+
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> Overlay<Image<U, 4>> for Image<T, 4> {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]

@@ -101,7 +101,8 @@ mod drawing;
 mod r#dyn;
 pub mod indexed;
 pub(crate) mod math;
-mod overlay;
+#[doc(hidden)]
+pub mod overlay;
 mod pack;
 mod span;
 mod sub;
