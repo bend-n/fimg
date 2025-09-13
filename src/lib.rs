@@ -63,8 +63,8 @@
     rustc_private,
     portable_simd,
     array_windows,
+    const_convert,
     doc_auto_cfg,
-    const_from,
     try_blocks,
     test
 )]
