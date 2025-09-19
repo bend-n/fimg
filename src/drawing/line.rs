@@ -3,19 +3,19 @@ use crate::Image;
 use vecto::Vec2;
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
-    /// Draw a line from point a to point b.
+    /// Draw a half-open line from point a to point b.
     ///
     /// Points not in bounds will not be included.
     pub fn line(&mut self, a: (i32, i32), b: (i32, i32), color: [u8; CHANNELS]) {
-        clipline::clipline(
-            ((a.0 as isize, a.1 as isize), (b.0 as isize, b.1 as isize)),
-            (
-                (0, 0),
-                (self.width() as isize - 1, self.height() as isize - 1),
-            ),
-            // SAFETY: clipline clips
-            |x, y| unsafe { self.set_pixel(x as u32, y as u32, color) },
-        );
+        clipline::Clip::<i32>::from_size(self.width(), self.height())
+            .unwrap() // fixme: panics if width or height > i32::MAX + 1
+            .line_b_proj(a.0, a.1, b.0, b.1)
+            .into_iter()
+            .flatten()
+            .for_each(|(x, y)| {
+                // SAFETY: x, y are clipped to self.
+                unsafe { self.set_pixel(x, y, color) }
+            });
     }
 
     /// Draw a thick line from point a to point b.
