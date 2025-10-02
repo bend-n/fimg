@@ -64,8 +64,8 @@
     portable_simd,
     array_windows,
     const_convert,
-    doc_auto_cfg,
     try_blocks,
+    doc_cfg,
     test
 )]
 #![warn(
