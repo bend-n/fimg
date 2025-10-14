@@ -406,30 +406,21 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Im
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
-        /// helper macro for defining rgb=>rgb overlays. allows unrolling
-        macro_rules! o3x3 {
-            ($n:expr) => {{
-                for j in 0..($n as usize) {
-                    let i_x = j * ($n as usize) * 3..(j + 1) * ($n as usize) * 3;
-                    let o_x = ((j + y as usize) * self.width() as usize + x as usize) * 3
-                        ..((j + y as usize) * self.width() as usize + x as usize + ($n as usize))
-                            * 3;
-                    // <= because ".." range
-                    debug_assert!(o_x.end <= self.buffer().as_ref().len());
-                    debug_assert!(i_x.end <= with.buffer().as_ref().len());
-                    // SAFETY: bounds are ✅
-                    let a = unsafe { self.buffer.as_mut().get_unchecked_mut(o_x) };
-                    // SAFETY: we are in ⬜!
-                    let b = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
-                    a.copy_from_slice(b);
-                }
-            }};
-        }
-        // let it unroll
-        match with.width() {
-            8 => o3x3!(8),
-            16 => o3x3!(16), // this branch makes 8x8 0.16 times slower; but 16x16 0.2 times faster.
-            _ => o3x3!(with.width()),
+        for j in 0..with.height() as usize {
+            let i_x = // copy entire rows at a time
+                j * (with.width() as usize) * 3
+            ..(j + 1) * (with.width() as usize) * 3;
+            let o_x = // _
+                ((j + y as usize) * self.width() as usize + x as usize) * 3
+             ..((j + y as usize) * self.width() as usize + x as usize + with.width() as usize) * 3;
+            // <= because ".." range
+            debug_assert!(o_x.end <= self.buffer().as_ref().len());
+            debug_assert!(i_x.end <= with.buffer().as_ref().len());
+            // SAFETY: bounds are ✅
+            let a = unsafe { self.buffer.as_mut().get_unchecked_mut(o_x) };
+            // SAFETY: we are in ⬜!
+            let b = unsafe { with.buffer.as_ref().get_unchecked(i_x) };
+            a.copy_from_slice(b);
         }
         self
     }
