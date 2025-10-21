@@ -49,8 +49,8 @@ impl Blend<4> for [u8; 4] {
             return;
         };
         self[..3].copy_from_slice(
-            &fg.trunc()
-                .zip(bg.trunc())
+            &fg.init()
+                .zip(bg.init())
                 .map(|(f, b)| (f * fg[3] + b * bg[3] * (1.0 - fg[3])) / a)
                 .unfloat(),
         );

@@ -17,7 +17,7 @@ impl<const N: usize> PFrom<N> for [u8; N] {
 pub type Y = [u8; 1];
 impl PFrom<2> for Y {
     fn pfrom(f: YA) -> Self {
-        f.trunc()
+        f.init()
     }
 }
 
@@ -29,7 +29,7 @@ impl PFrom<3> for Y {
 
 impl PFrom<4> for Y {
     fn pfrom(f: RGBA) -> Self {
-        PFrom::pfrom(f.trunc())
+        PFrom::pfrom(f.init())
     }
 }
 
@@ -49,7 +49,7 @@ impl PFrom<3> for YA {
 
 impl PFrom<4> for YA {
     fn pfrom(f: RGBA) -> Self {
-        Y::pfrom(f.trunc()).join(255)
+        Y::pfrom(f.init()).join(255)
     }
 }
 
@@ -70,7 +70,7 @@ impl PFrom<2> for RGB {
 
 impl PFrom<4> for RGB {
     fn pfrom(f: RGBA) -> Self {
-        f.trunc()
+        f.init()
     }
 }
 

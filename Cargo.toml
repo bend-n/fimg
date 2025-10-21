@@ -1,6 +1,6 @@
 [package]
 name = "fimg"
-version = "0.4.49"
+version = "0.4.50"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2024"
@@ -24,8 +24,8 @@ minifb = { version = "0.25.0", default-features = false, features = [
     "wayland",
 ], optional = true }
 wgpu = { version = "0.19.1", default-features = false, optional = true }
-atools = "0.1.4"
-qwant = { version = "1.0.0", optional = true }
+atools = "0.1.9"
+qwant = { version = "1.0.2", optional = true }
 libc = "0.2.154"
 hinted = { version = "1.0.0", features = ["nightly"] }
 lower = "0.2.0"
