@@ -121,6 +121,7 @@ pub use cloner::ImageCloner;
 pub use r#dyn::DynImage;
 pub use overlay::{
     BlendingOverlay, BlendingOverlayAt, ClonerOverlay, ClonerOverlayAt, Overlay, OverlayAt,
+    OverlayAtClipping,
 };
 
 trait CopyWithinUnchecked {

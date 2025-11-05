@@ -112,7 +112,7 @@ where
     }
 
     #[cfg(unix)]
-    // https://github.com/benjajaja/ratatui-image/blob/master/src/picker.rs#L226
+    // https://github.com/benjajaja/ratatui-image/blob/eeb2a1b26fbe360259f213d6d5eb5449c8ae1d6e/src/picker.rs#L226
     fn guess_harder(&self, to: &mut impl Write) -> Option<Result> {
         // contains a kitty gfx and sixel query, the `\x1b[c` is for sixels
         let buf = query(r"_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\[c")?;
@@ -129,7 +129,10 @@ where
         }
     }
 }
-
+#[cfg(not(unix))]
+fn query(device_query_code: &'static str) -> Option<String> {
+    None
+}
 #[cfg(unix)]
 // https://github.com/benjajaja/ratatui-image/blob/master/src/picker.rs#L226
 fn query(device_query_code: &'static str) -> Option<String> {
@@ -164,7 +167,7 @@ fn query(device_query_code: &'static str) -> Option<String> {
             let mut buf = Vec::new();
             let mut tmp = [0; 1 << 5];
             loop {
-                let mut x = std::mem::zeroed::<libc::fd_set>();
+                let mut x: libc::fd_set = std::mem::zeroed::<libc::fd_set>();
                 libc::FD_SET(0, &mut x);
                 match libc::select(
                     1,

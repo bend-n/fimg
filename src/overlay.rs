@@ -15,6 +15,12 @@ pub trait OverlayAt<W> {
     unsafe fn overlay_at(&mut self, with: &W, x: u32, y: u32) -> &mut Self;
 }
 
+/// Useful for debugging, sometimes.
+#[doc(hidden)]
+pub trait OverlayAtClipping<W> {
+    fn clipping_overlay_at(&mut self, with: &W, x: u32, y: u32) -> &mut Self;
+}
+
 /// Sealant module
 mod sealed {
     /// Seals the cloner traits
@@ -378,6 +384,23 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Im
     }
 }
 
+impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAtClipping<Image<U, 3>> for Image<T, 3> {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn clipping_overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
+        for j in 0..with.height() {
+            for i in 0..with.width() {
+                // SAFETY: i, j is in bounds.
+                if let Some(their_px) = with.get_pixel(i, j)
+                    && let Some(our_px) = self.get_pixel_mut(i + x, j + y)
+                {
+                    our_px.copy_from_slice(&their_px);
+                }
+            }
+        }
+        self
+    }
+}
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Image<T, 4> {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
