@@ -4,7 +4,7 @@ mod convert;
 #[cfg(feature = "scale")]
 mod scale;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 /// Dynamic image.
 /// Can be any of {`Y8`, `YA8`, `RGB8`, `RGB16`}.
 pub enum DynImage<T> {

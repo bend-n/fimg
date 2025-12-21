@@ -1,10 +1,11 @@
 //! the houser of uninitialized memory. €$@!0В𴬔!℡
 //!
 //! contains [`Image`], an uninitialized image.
-use crate::{span::Span, CopyWithinUnchecked};
+use crate::{CopyWithinUnchecked, span::Span};
 use std::{hint::assert_unchecked, mem::MaybeUninit, num::NonZeroU32, ops::Index};
 
 /// A uninitialized image. Be sure to initialize it!
+#[derive(Hash)]
 pub struct Image<T: Copy, const CHANNELS: usize> {
     /// Has capacity w * h * c
     buffer: Vec<T>,

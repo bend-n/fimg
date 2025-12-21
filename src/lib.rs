@@ -52,7 +52,6 @@
 #![cfg_attr(all(feature = "term", windows), windows_subsystem = "console")]
 #![feature(
     type_changing_struct_update,
-    maybe_uninit_write_slice,
     custom_inner_attributes,
     slice_swap_unchecked,
     generic_const_exprs,
@@ -62,7 +61,6 @@
     core_intrinsics,
     rustc_private,
     portable_simd,
-    array_windows,
     const_convert,
     try_blocks,
     doc_cfg,
@@ -214,7 +212,7 @@ impl<T: AsRef<[u8]>> Image<T, 3> {
 }
 
 /// A image with a variable number of channels, and a nonzero size.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub struct Image<T, const CHANNELS: usize> {
     /// column order 2d slice/vec
