@@ -59,6 +59,7 @@
     iter_array_chunks,
     const_trait_impl,
     core_intrinsics,
+    new_range_api,
     rustc_private,
     portable_simd,
     const_convert,
@@ -85,11 +86,17 @@
 )]
 use array_chunks::*;
 use hinted::HintExt;
-use std::{hint::assert_unchecked, intrinsics::transmute_unchecked, num::NonZeroU32, ops::Range};
+use std::{
+    hint::assert_unchecked,
+    intrinsics::transmute_unchecked,
+    num::NonZeroU32,
+    ops::{Range, RangeBounds, RangeInclusive},
+};
 
 mod affine;
 #[cfg(feature = "blur")]
 mod blur;
+mod slicing;
 pub use sub::{Cropper, SubImage};
 pub mod builder;
 #[doc(hidden)]
@@ -312,7 +319,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// the output index is not guaranteed to be in bounds
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
-    fn at(&self, x: u32, y: u32) -> usize {
+    pub fn at(&self, x: u32, y: u32) -> usize {
         (self.width(), self.height()).at::<CHANNELS>(x, y)
     }
 
@@ -555,6 +562,31 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     {
         // SAFETY: x and y in bounds
         unsafe { self.get_pixel(x, y).unwrap_unchecked() }
+    }
+
+    /// pixels contiguously from start to end
+    /// they gotta be in bounds
+    ///
+    /// i think this is unsound because you can make asref do whatever the fucking fuck you fucking want but thats fucking on you
+    pub unsafe fn pixels<U: Copy>(&self, r: impl PBounds) -> &[[U; CHANNELS]]
+    where
+        T: AsRef<[U]>,
+    {
+        let b = self.bounds(r);
+        unsafe { self.buffer.as_ref().get_unchecked(b).as_chunks_unchecked() }
+    }
+    /// pixels contiguously from start to end
+    pub unsafe fn pixels_mut<U: Copy>(&mut self, r: impl PBounds) -> &mut [[U; CHANNELS]]
+    where
+        T: AsRef<[U]> + AsMut<[U]>,
+    {
+        let b = self.bounds(r);
+        unsafe {
+            self.buffer
+                .as_mut()
+                .get_unchecked_mut(b)
+                .as_chunks_unchecked_mut()
+        }
     }
 
     /// Returns a [`PixelEntry`]
@@ -938,3 +970,5 @@ macro_rules! img {
 }
 #[cfg(test)]
 use img;
+
+use crate::slicing::PBounds;

@@ -1,4 +1,6 @@
-use fimg::{scale::*, Image};
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+use fimg::{Image, scale::*};
 
 macro_rules! bench {
     ($([$a: ident, $alg:ident]),+ $(,)?) => {
