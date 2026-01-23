@@ -153,7 +153,7 @@ impl<W, const C: usize> SubImage<W, C> {
     /// # Safety
     ///
     /// this pixel must be in bounds.
-    pub unsafe fn pixel<U: Copy>(&self, x: u32, y: u32) -> [U; C]
+    pub unsafe fn pixel<U: Copy>(&self, x: u32, y: u32) -> &[U; C]
     where
         W: AsRef<[U]>,
     {

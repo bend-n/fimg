@@ -191,7 +191,7 @@ where
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let their_px = unsafe { &with.pixel(i, j) };
+                let their_px = unsafe { with.pixel(i, j) };
                 let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                 our_px.blend(*their_px);
             }
@@ -212,7 +212,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Image<T, 3> {
     ) {
         for j in 0..with.height() {
             for i in 0..with.width() {
-                let &[their_alpha] = unsafe { &with.pixel(i, j) };
+                let &[their_alpha] = unsafe { with.pixel(i, j) };
                 let our_pixel = unsafe { self.pixel_mut(i + x, j + y) };
                 crate::pixels::blending::blend_alpha_and_color(their_alpha, color, our_pixel);
             }
@@ -320,7 +320,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 1>> for Im
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let &[their_px] = unsafe { &with.pixel(i, j) };
+                let &[their_px] = unsafe { with.pixel(i, j) };
                 let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                 our_px.copy_from_slice(&[their_px; 3]);
             }
@@ -337,7 +337,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Im
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let &[their_px, a] = unsafe { &with.pixel(i, j) };
+                let &[their_px, a] = unsafe { with.pixel(i, j) };
                 if a >= 128 {
                     let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                     our_px.copy_from_slice(&[their_px; 3]);
@@ -356,7 +356,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 1>> for Im
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let &[their_px] = unsafe { &with.pixel(i, j) };
+                let &[their_px] = unsafe { with.pixel(i, j) };
                 let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                 our_px.copy_from_slice(&[their_px; 4]);
             }
@@ -373,7 +373,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Im
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let &[their_px, a] = unsafe { &with.pixel(i, j) };
+                let &[their_px, a] = unsafe { with.pixel(i, j) };
                 if a >= 128 {
                     let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                     our_px.copy_from_slice(&[their_px; 4]);
@@ -394,7 +394,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAtClipping<Image<U, 3>
                 if let Some(their_px) = with.get_pixel(i, j)
                     && let Some(our_px) = self.get_pixel_mut(i + x, j + y)
                 {
-                    our_px.copy_from_slice(&their_px);
+                    our_px.copy_from_slice(their_px);
                 }
             }
         }
@@ -409,7 +409,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Im
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let their_px = unsafe { &with.pixel(i, j) };
+                let their_px = unsafe { with.pixel(i, j) };
                 let our_px = unsafe { self.pixel_mut(i + x, j + y) };
                 our_px.copy_from_slice(their_px);
             }
@@ -507,7 +507,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 4>> for Im
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
-                let their_px = unsafe { &with.pixel(i, j) };
+                let their_px = unsafe { with.pixel(i, j) };
                 if their_px[3] >= 128 {
                     // SAFETY: if everything else goes well, this is fine
                     let our_px = unsafe { self.pixel_mut(i + x, j + y) };

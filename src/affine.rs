@@ -16,7 +16,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
                 // SAFETY: looping over self, all ok (could be safe versions, bounds would be elided)
                 let p = unsafe { self.pixel(x, y) };
                 // SAFETY: looping over self.
-                unsafe { out.write(&p, (x, self.height() - y - 1)) };
+                unsafe { out.write(p, (x, self.height() - y - 1)) };
             }
         }
         // SAFETY: init
@@ -37,7 +37,7 @@ impl<const CHANNELS: usize> ImageCloner<'_, CHANNELS> {
                 // SAFETY: looping over self, all ok
                 let p = unsafe { self.pixel(x, y) };
                 // SAFETY: looping over self, all ok
-                unsafe { out.write(&p, (self.width() - x - 1, y)) };
+                unsafe { out.write(p, (self.width() - x - 1, y)) };
             }
         }
         // SAFETY: init
@@ -54,10 +54,7 @@ impl<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, CHANNELS> {
                 #[allow(clippy::multiple_unsafe_ops_per_block)]
                 // SAFETY: within bounds
                 unsafe {
-                    let p2 = self.pixel(x, y2);
-                    let p = self.pixel(x, y);
-                    self.set_pixel(x, y2, p);
-                    self.set_pixel(x, y, p2);
+                    self.swap_pixel((x, y2), (x, y))
                 }
             }
         }
@@ -71,10 +68,7 @@ impl<const CHANNELS: usize, T: AsMut<[u8]> + AsRef<[u8]>> Image<T, CHANNELS> {
                 #[allow(clippy::multiple_unsafe_ops_per_block)]
                 // SAFETY: bounded
                 unsafe {
-                    let p2 = self.pixel(x2, y);
-                    let p = self.pixel(x, y);
-                    self.set_pixel(x2, y, p);
-                    self.set_pixel(x, y, p2);
+                    self.swap_pixel((x2, y), (x, y))
                 }
             }
         }

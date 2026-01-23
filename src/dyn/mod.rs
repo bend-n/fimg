@@ -142,7 +142,7 @@ impl<T: AsRef<[u8]>> DynImage<T> {
         [u8; P]: PFrom<3>,
         [u8; P]: PFrom<4>,
     {
-        e!(self, |i| PFrom::pfrom(unsafe { i.pixel(x, y) }))
+        e!(self, |i| PFrom::pfrom(unsafe { *i.pixel(x, y) }))
     }
 
     /// Bytes of this image.

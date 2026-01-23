@@ -18,7 +18,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
             ($($x:expr,$y:expr);+;) => {
                 $(if $x >= 0 && $x < self.width() as i32 && $y >= 0 && $y < self.height() as i32 {
                     // SAFETY: ^
-                    unsafe { self.set_pixel($x as u32, $y as u32, c) };
+                    unsafe { self.set_pixel($x as u32, $y as u32, &c) };
                 })+
             };
         }
@@ -58,7 +58,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                 let y = y + yc;
                 if x >= 0 && x < self.width() as i32 && y >= 0 && y < self.height() as i32 {
                     // SAFETY: ^
-                    unsafe { self.set_pixel(x as u32, y as u32, c) };
+                    unsafe { self.set_pixel(x as u32, y as u32, &c) };
                 }
             }
         }

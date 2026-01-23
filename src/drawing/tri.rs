@@ -59,7 +59,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
                             > 0.
                 } {
                     // SAFETY: x, y are bounded
-                    unsafe { self.set_pixel(x, y, col) };
+                    unsafe { self.set_pixel(x, y, &col) };
                 }
             }
         }

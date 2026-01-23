@@ -86,12 +86,7 @@
 )]
 use array_chunks::*;
 use hinted::HintExt;
-use std::{
-    hint::assert_unchecked,
-    intrinsics::transmute_unchecked,
-    num::NonZeroU32,
-    ops::{Range, RangeBounds, RangeInclusive},
-};
+use std::{hint::assert_unchecked, intrinsics::transmute_unchecked, num::NonZeroU32, ops::Range};
 
 mod affine;
 #[cfg(feature = "blur")]
@@ -539,13 +534,15 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     }
 
     /// Get a pixel. Optionally. Yeah!
-    pub fn get_pixel<U: Copy>(&self, x: u32, y: u32) -> Option<[U; CHANNELS]>
+    pub fn get_pixel<U>(&self, x: u32, y: u32) -> Option<&[U; CHANNELS]>
     where
         T: AsRef<[U]>,
     {
         ((x < self.width()) & (y < self.height())).then(|| unsafe {
-            self.buffer().as_ref()[self.slice(x, y)]
-                .try_into()
+            self.buffer()
+                .as_ref()
+                .get_unchecked(self.slice(x, y))
+                .as_array()
                 .unwrap_unchecked()
         })
     }
@@ -556,7 +553,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// - UB if x, y is out of bounds
     /// - UB if buffer is too small
     #[inline]
-    pub unsafe fn pixel<U: Copy>(&self, x: u32, y: u32) -> [U; CHANNELS]
+    pub unsafe fn pixel<U>(&self, x: u32, y: u32) -> &[U; CHANNELS]
     where
         T: AsRef<[U]>,
     {
@@ -630,11 +627,14 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     where
         T: AsMut<[U]> + AsRef<[U]>,
     {
-        let idx = self.slice(x, y);
-        self.buffer
-            .as_mut()
-            .get_mut(idx)
-            .map(|x| x.try_into().unwrap())
+        let sl = self.slice(x, y);
+        ((x < self.width()) & (y < self.height())).then(|| unsafe {
+            self.buffer_mut()
+                .as_mut()
+                .get_unchecked_mut(sl)
+                .as_mut_array()
+                .unwrap_unchecked()
+        })
     }
 
     /// iterator over columns
@@ -661,11 +661,11 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// );
     /// ```
     #[must_use = "iterators are lazy and do nothing unless consumed"]
-    pub fn cols<U: Copy>(
-        &self,
+    pub fn cols<'a, U: Copy + 'a>(
+        &'a self,
     ) -> impl DoubleEndedIterator
     + ExactSizeIterator<
-        Item = impl ExactSizeIterator + DoubleEndedIterator<Item = [U; CHANNELS]> + '_,
+        Item = impl ExactSizeIterator + DoubleEndedIterator<Item = &'a [U; CHANNELS]>,
     >
     where
         T: AsRef<[U]>,
@@ -741,10 +741,10 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// Get the pixels from an iterator.
     /// # Safety
     /// the points must be on the image.
-    pub unsafe fn pixels_of<'l, U: Copy>(
+    pub unsafe fn pixels_of<'l, U: Copy + 'l>(
         &'l self,
         iterator: impl ExactSizeIterator<Item = (u32, u32)> + 'l,
-    ) -> impl ExactSizeIterator<Item = [U; CHANNELS]> + 'l
+    ) -> impl ExactSizeIterator<Item = &'l [U; CHANNELS]>
     where
         T: AsRef<[U]>,
     {
@@ -789,11 +789,21 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// UB if x, y is out of bounds.
     #[inline]
-    pub unsafe fn set_pixel(&mut self, x: u32, y: u32, px: [u8; CHANNELS]) {
+    pub unsafe fn set_pixel(&mut self, x: u32, y: u32, px: &[u8; CHANNELS]) {
         // SAFETY: Caller says that x, y is in bounds
         let out = unsafe { self.pixel_mut(x, y) };
         // SAFETY: px must be CHANNELS long
         unsafe { std::ptr::copy_nonoverlapping(px.as_ptr(), out.as_mut_ptr(), CHANNELS) };
+    }
+
+    /// Such swap. not actually implemented properly.
+    pub unsafe fn swap_pixel(&mut self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) {
+        unsafe {
+            let &p2 = self.pixel(x2, y2);
+            let &p1 = self.pixel(x1, y1);
+            self.set_pixel(x2, y2, &p1);
+            self.set_pixel(x1, y1, &p2);
+        }
     }
 }
 

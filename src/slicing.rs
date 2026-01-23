@@ -1,4 +1,4 @@
-use std::ops::{Range, RangeBounds, RangeFull, RangeInclusive};
+use std::ops::{Range, RangeBounds, RangeInclusive};
 
 use crate::Image;
 

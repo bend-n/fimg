@@ -15,19 +15,19 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         // skip sides, leave that to second loop
         for x in clamp(x1 + 1..width + x1, 0..self.width()) {
             // SAFETY: clamped to bounds
-            unsafe { self.set_pixel(x, y1, c) };
+            unsafe { self.set_pixel(x, y1, &c) };
         }
         for x in clamp(x1 + 1..width + x1, 0..self.width()) {
             // SAFETY: clamped to bounds
-            unsafe { self.set_pixel(x, (y1 + height).min(self.height() - 1), c) };
+            unsafe { self.set_pixel(x, (y1 + height).min(self.height() - 1), &c) };
         }
         for y in clamp(y1..height + y1 + 1, 0..self.height()) {
             // SAFETY: clamped to bounds
-            unsafe { self.set_pixel(x1, y, c) };
+            unsafe { self.set_pixel(x1, y, &c) };
         }
         for y in clamp(y1..height + y1 + 1, 0..self.height()) {
             // SAFETY: clamped to bounds
-            unsafe { self.set_pixel((x1 + width).min(self.width() - 1), y, c) };
+            unsafe { self.set_pixel((x1 + width).min(self.width() - 1), y, &c) };
         }
     }
 
@@ -42,7 +42,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
         for x in clamp(x1..1 + width + x1, 0..self.width()) {
             for y in clamp(y1..1 + height + y1, 0..self.height()) {
                 // SAFETY: clamped to bounds
-                unsafe { self.set_pixel(x, y, c) };
+                unsafe { self.set_pixel(x, y, &c) };
             }
         }
     }

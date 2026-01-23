@@ -14,7 +14,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
             .flatten()
             .for_each(|(x, y)| {
                 // SAFETY: x, y are clipped to self.
-                unsafe { self.set_pixel(x, y, color) }
+                unsafe { self.set_pixel(x, y, &color) }
             });
     }
 
