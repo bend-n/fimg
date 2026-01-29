@@ -557,6 +557,9 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     where
         T: AsRef<[U]>,
     {
+        debug_assert!(x < self.width());
+        debug_assert!(y < self.height());
+
         // SAFETY: x and y in bounds
         unsafe { self.get_pixel(x, y).unwrap_unchecked() }
     }
@@ -617,6 +620,9 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     where
         T: AsMut<[U]> + AsRef<[U]>,
     {
+        debug_assert!(x < self.width());
+        debug_assert!(y < self.height());
+
         // SAFETY: we have been told x, y is in bounds.
         unsafe { self.get_pixel_mut(x, y).unwrap_unchecked() }
     }
