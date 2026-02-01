@@ -4,7 +4,7 @@ use core::intrinsics::simd::simd_cast;
 use std::arch::x86_64::*;
 use std::{
     intrinsics::transmute_unchecked,
-    simd::{prelude::*, LaneCount, MaskElement, SimdElement, SupportedLaneCount},
+    simd::{MaskElement, SimdElement, prelude::*},
 };
 
 #[test]
@@ -31,22 +31,16 @@ trait Cast<T, const N: usize> {
     fn cas<U: SimdT>(self) -> U;
 }
 trait SimdT {}
-impl<T: SimdElement, const N: usize> SimdT for Simd<T, N> where LaneCount<N>: SupportedLaneCount {}
-impl<T: MaskElement, const N: usize> SimdT for Mask<T, N> where LaneCount<N>: SupportedLaneCount {}
-impl<T: SimdElement, const N: usize> Cast<T, N> for Simd<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> SimdT for Simd<T, N> {}
+impl<T: MaskElement, const N: usize> SimdT for Mask<T, N> {}
+impl<T: SimdElement, const N: usize> Cast<T, N> for Simd<T, N> {
     fn cas<U>(self) -> U {
         assert!(std::mem::size_of::<U>() == std::mem::size_of::<Self>());
         unsafe { transmute_unchecked(self) }
     }
 }
 
-impl<T: MaskElement, const N: usize> Cast<T, N> for Mask<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: MaskElement, const N: usize> Cast<T, N> for Mask<T, N> {
     fn cas<U>(self) -> U {
         assert!(std::mem::size_of::<U>() == std::mem::size_of::<Self>());
         unsafe { transmute_unchecked(self) }

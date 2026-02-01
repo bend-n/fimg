@@ -12,7 +12,7 @@ categories = ["multimedia::images", "graphics"]
 
 [dependencies]
 mattr = "0.0.2"
-png = { version = "0.17", features = ["unstable"], optional = true }
+png = { version = "0.18", features = ["unstable"], optional = true }
 fontdue = { version = "0.7.3", optional = true }
 vecto = "0.1.1"
 umath = "0.0.7"
@@ -83,3 +83,6 @@ incremental = true
 
 [package.metadata.docs.rs]
 all-features = true
+
+[patch.crates-io]
+png = { git = "https://github.com/bend-n/image-png" }

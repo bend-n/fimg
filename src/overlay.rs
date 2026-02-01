@@ -92,7 +92,7 @@ unsafe fn blit(mut rgb: &mut [u8], mut rgba: &[u8]) {
         let old = Simd::from_slice(dst);
         let new: u8x16 = Simd::from_slice(src);
 
-        let threshold = new.simd_ge(Simd::splat(128)).to_int().cast::<u8>();
+        let threshold = new.simd_ge(Simd::splat(128)).to_simd().cast::<u8>();
         let mut mask = simd_swizzle!(
             threshold,
             // [r, g, b, a (3)] [r, g, b, a(7)]

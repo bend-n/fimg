@@ -869,7 +869,7 @@ where
     Self: Sized,
 {
     /// Read a png into an image.
-    fn read(f: &mut impl std::io::Read) -> std::io::Result<Self>;
+    fn read<T: std::io::BufRead + std::io::Seek>(f: &mut T) -> std::io::Result<Self>;
 }
 
 /// helper macro for defining the save() method.
@@ -916,7 +916,7 @@ macro_rules! read {
         #[cfg(feature = "save")]
         impl ReadPng for Image<Box<[u8]>, $n> {
             /// Open a PNG image
-            fn read(f: &mut impl std::io::Read) -> std::io::Result<Self> {
+            fn read<T: std::io::BufRead + std::io::Seek>(f: &mut T) -> std::io::Result<Self> {
                 use png::Transformations as T;
                 let mut dec = png::Decoder::new(f);
                 match $n {
@@ -925,7 +925,7 @@ macro_rules! read {
                     _ => (),
                 }
                 let mut reader = dec.read_info()?;
-                let mut buf = vec![0; reader.output_buffer_size()].into_boxed_slice();
+                let mut buf = vec![0; reader.output_buffer_size().unwrap()].into_boxed_slice();
                 let info = reader.next_frame(&mut buf)?;
                 use png::ColorType::*;
                 macro_rules! n {

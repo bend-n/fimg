@@ -161,7 +161,7 @@ impl DynImage<Box<[u8]>> {
         let mut dec = png::Decoder::new(r);
         dec.set_transformations(T::STRIP_16 | T::EXPAND);
         let mut reader = dec.read_info().unwrap();
-        let mut buf = vec![0; reader.output_buffer_size()].into_boxed_slice();
+        let mut buf = vec![0; reader.output_buffer_size().unwrap()].into_boxed_slice();
         let info = reader.next_frame(&mut buf).unwrap();
         use png::ColorType::*;
         match info.color_type {
