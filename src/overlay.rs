@@ -384,10 +384,12 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Im
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAtClipping<Image<U, 3>> for Image<T, 3> {
+impl<const N: usize, T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAtClipping<Image<U, N>>
+    for Image<T, N>
+{
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
-    fn clipping_overlay_at(&mut self, with: &Image<U, 3>, x: u32, y: u32) -> &mut Self {
+    fn clipping_overlay_at(&mut self, with: &Image<U, N>, x: u32, y: u32) -> &mut Self {
         for j in 0..with.height() {
             for i in 0..with.width() {
                 // SAFETY: i, j is in bounds.
