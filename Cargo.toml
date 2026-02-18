@@ -83,6 +83,3 @@ incremental = true
 
 [package.metadata.docs.rs]
 all-features = true
-
-[patch.crates-io]
-png = { git = "https://github.com/bend-n/image-png" }
