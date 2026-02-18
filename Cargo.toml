@@ -1,11 +1,11 @@
 [package]
 name = "fimg"
-version = "0.4.51"
+version = "0.4.52"
 authors = ["bend-n <bend.n@outlook.com>"]
 license = "MIT"
 edition = "2024"
 description = "fast image operations"
-repository = "https://github.com/bend-n/fimg"
+repository = "https://git.bendn.org/fimg"
 exclude = ["tdata", "benches/", ".gitignore"]
 keywords = ["image", "affine", "scale", "drawing"]
 categories = ["multimedia::images", "graphics"]
