@@ -63,7 +63,9 @@
     rustc_private,
     portable_simd,
     const_convert,
+    derive_const,
     try_blocks,
+    const_cmp,
     doc_cfg,
     test
 )]
@@ -214,7 +216,8 @@ impl<T: AsRef<[u8]>> Image<T, 3> {
 }
 
 /// A image with a variable number of channels, and a nonzero size.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Eq, Hash)]
+#[derive_const(PartialEq)]
 #[repr(C)]
 pub struct Image<T, const CHANNELS: usize> {
     /// column order 2d slice/vec

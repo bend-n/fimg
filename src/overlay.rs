@@ -384,25 +384,44 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 2>> for Im
     }
 }
 
-impl<const N: usize, T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAtClipping<Image<U, N>>
-    for Image<T, N>
-{
-    #[inline]
-    #[cfg_attr(debug_assertions, track_caller)]
-    fn clipping_overlay_at(&mut self, with: &Image<U, N>, x: u32, y: u32) -> &mut Self {
-        for j in 0..with.height() {
-            for i in 0..with.width() {
-                // SAFETY: i, j is in bounds.
-                if let Some(their_px) = with.get_pixel(i, j)
-                    && let Some(our_px) = self.get_pixel_mut(i + x, j + y)
-                {
-                    our_px.copy_from_slice(their_px);
+fn coerce<T, U, F: FnMut(T, U)>(f: F) -> F {
+    f
+}
+macro_rules! imp {
+    ($N1:literal => $N2:literal, $conv:expr) => {
+        impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAtClipping<Image<U, $N1>>
+            for Image<T, $N2>
+        {
+            #[inline]
+            #[cfg_attr(debug_assertions, track_caller)]
+            fn clipping_overlay_at(&mut self, with: &Image<U, $N1>, x: u32, y: u32) -> &mut Self {
+                for j in 0..with.height() {
+                    for i in 0..with.width() {
+                        // SAFETY: i, j is in bounds.
+                        if let Some(their_px) = with.get_pixel(i, j)
+                            && let Some(our_px) = self.get_pixel_mut(i + x, j + y)
+                        {
+                            (coerce::<&mut [u8; $N2], &[u8; $N1], _>($conv))(our_px, their_px);
+                        }
+                    }
                 }
+                self
             }
         }
-        self
-    }
+    };
 }
+imp!(1 => 1, |a, b| a.copy_from_slice(b));
+imp!(2 => 2, |a, b| a.copy_from_slice(b));
+imp!(3 => 3, |a, b| a.copy_from_slice(b));
+imp!(4 => 4, |a, b| a.copy_from_slice(b));
+imp!(4 => 3, |a, b| if b[3] > 128 { a.copy_from_slice(&b[..3]) });
+imp!(1 => 4, |a, [b]| a.copy_from_slice(&[*b;4]));
+imp!(1 => 3, |a, [b]| a.copy_from_slice(&[*b;3]));
+imp!(2 => 3, |a, [b, y]| if *y > 128 { a.copy_from_slice(&[*b;3]) });
+imp!(2 => 4, |a, [b, y]| if *y > 128 { a.copy_from_slice(&[*b;3].join(255)); });
+use atools::Join;
+imp!(3 => 4, |a, b| a.copy_from_slice(&(*b).join(255)));
+
 impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<Image<U, 3>> for Image<T, 4> {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
@@ -546,6 +565,18 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, U: AsRef<[u8]>> OverlayAt<DynImage<U>> for Im
         crate::r#dyn::e!(with, |with| unsafe {
             self.overlay_at(with, x, y);
         });
+        self
+    }
+}
+impl<T: AsRef<[u8]>, U: AsRef<[u8]> + AsMut<[u8]>> OverlayAtClipping<DynImage<T>> for Image<U, 3> {
+    fn clipping_overlay_at(&mut self, with: &DynImage<T>, x: u32, y: u32) -> &mut Self {
+        crate::r#dyn::e!(with, |with| { self.clipping_overlay_at(with, x, y) });
+        self
+    }
+}
+impl<T: AsRef<[u8]>, U: AsRef<[u8]> + AsMut<[u8]>> OverlayAtClipping<DynImage<T>> for Image<U, 4> {
+    fn clipping_overlay_at(&mut self, with: &DynImage<T>, x: u32, y: u32) -> &mut Self {
+        crate::r#dyn::e!(with, |with| { self.clipping_overlay_at(with, x, y) });
         self
     }
 }
