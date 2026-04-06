@@ -954,6 +954,7 @@ where
     [(); { (CHANNELS <= 4) as usize } - 1]:,
 {
     #[cfg(feature = "save")]
+    #[track_caller]
     /// Open a PNG image
     pub fn open(f: impl AsRef<std::path::Path>) -> Self {
         let p = std::fs::File::open(f).unwrap();

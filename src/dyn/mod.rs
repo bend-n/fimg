@@ -154,6 +154,7 @@ impl<T: AsRef<[u8]>> DynImage<T> {
 
 impl DynImage<Box<[u8]>> {
     #[cfg(feature = "save")]
+    #[track_caller]
     /// Open a PNG image
     pub fn open(f: impl AsRef<std::path::Path>) -> Self {
         use png::Transformations as T;
@@ -174,6 +175,7 @@ impl DynImage<Box<[u8]>> {
     }
 
     #[cfg(feature = "save")]
+    #[track_caller]
     /// Save this image to a PNG.
     pub fn save(&self, f: impl AsRef<std::path::Path>) {
         let p = std::fs::File::create(f).unwrap();
