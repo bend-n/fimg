@@ -556,6 +556,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// - UB if x, y is out of bounds
     /// - UB if buffer is too small
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn pixel<U>(&self, x: u32, y: u32) -> &[U; CHANNELS]
     where
         T: AsRef<[U]>,
@@ -571,6 +572,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     /// they gotta be in bounds
     ///
     /// i think this is unsound because you can make asref do whatever the fucking fuck you fucking want but thats fucking on you
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn pixels<U: Copy>(&self, r: impl PBounds) -> &[[U; CHANNELS]]
     where
         T: AsRef<[U]>,
@@ -579,6 +581,7 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
         unsafe { self.buffer.as_ref().get_unchecked(b).as_chunks_unchecked() }
     }
     /// pixels contiguously from start to end
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn pixels_mut<U: Copy>(&mut self, r: impl PBounds) -> &mut [[U; CHANNELS]]
     where
         T: AsRef<[U]> + AsMut<[U]>,
@@ -631,7 +634,6 @@ impl<T, const CHANNELS: usize> Image<T, CHANNELS> {
     }
 
     /// Returns a mutable reference to a pixel at (x, y), if (x, y) is in bounds.
-    #[cfg_attr(debug_assertions, track_caller)]
     pub fn get_pixel_mut<U>(&mut self, x: u32, y: u32) -> Option<&mut [U; CHANNELS]>
     where
         T: AsMut<[U]> + AsRef<[U]>,
@@ -798,6 +800,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     ///
     /// UB if x, y is out of bounds.
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn set_pixel(&mut self, x: u32, y: u32, px: &[u8; CHANNELS]) {
         // SAFETY: Caller says that x, y is in bounds
         let out = unsafe { self.pixel_mut(x, y) };
@@ -806,6 +809,7 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>, const CHANNELS: usize> Image<T, CHANNELS> {
     }
 
     /// Such swap. not actually implemented properly.
+    #[cfg_attr(debug_assertions, track_caller)]
     pub unsafe fn swap_pixel(&mut self, (x1, y1): (u32, u32), (x2, y2): (u32, u32)) {
         unsafe {
             let &p2 = self.pixel(x2, y2);
@@ -954,7 +958,7 @@ where
     [(); { (CHANNELS <= 4) as usize } - 1]:,
 {
     #[cfg(feature = "save")]
-    #[track_caller]
+    #[cfg_attr(debug_assertions, track_caller)]
     /// Open a PNG image
     pub fn open(f: impl AsRef<std::path::Path>) -> Self {
         let p = std::fs::File::open(f).unwrap();
